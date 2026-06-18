@@ -31,10 +31,10 @@ window.App = window.App || {};
 
   // ---------- Live room flows ----------
   // Ask once for a display name (remembered on the device). Returns null if the
-  // user cancels.
-  function askName() {
-    var saved = App.savedName();
-    var n = prompt('Your display name (shown to others in the room):', saved || '');
+  // user cancels. `def` pre-fills the prompt.
+  function askName(def) {
+    var pre = App.savedName() || def || '';
+    var n = prompt('Your display name (shown to others in the room):', pre);
     if (n == null) return null;
     n = n.trim().slice(0, 24) || 'Guest';
     App.rememberName(n);
@@ -47,8 +47,10 @@ window.App = window.App || {};
   function autoStartRoom(gameKey) {
     if (!App.syncAvailable || !App.syncAvailable()) return;
     if (App.room && App.room.code) return; // already in a room (e.g. after join)
-    var name = App.savedName() || (App.state.players[0] && App.state.players[0].name) || 'Host';
-    App.rememberName(name);
+    // ask for the host's display name (default = first player's name)
+    var def = (App.state.players[0] && App.state.players[0].name) || 'Host';
+    var name = askName(def);
+    if (name == null) name = App.savedName() || def; // cancel -> keep the default, room still opens
     var code = App.genRoomCode(gameKey);
     var pw = App.genRoomPassword();
     App.createRoom(code, pw, name).then(function (c) {
