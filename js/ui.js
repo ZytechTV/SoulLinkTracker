@@ -971,6 +971,19 @@ window.App = window.App || {};
       if (t.closest('#detailSave')) { saveDetail(detailModal, dC, dP); return; }
     }
 
+    // Game Over: "I made a mistake" -> revert the death that caused the wipe
+    if (t.closest('#undoDeath')) {
+      if (App.undoLastDeath()) {
+        App.closeModal();
+        App.render();
+        App.logRun('info', '↩ undid the last death (misclick correction)');
+        toast('↩ Death undone — the run continues.');
+      } else {
+        toast('Nothing to undo.', 'death');
+      }
+      return;
+    }
+
     // Game Over: restart with same setup, +1 try
     if (t.closest('#restartRun')) {
       App.restartSameSetup();

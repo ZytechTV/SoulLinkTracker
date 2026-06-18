@@ -60,6 +60,24 @@ window.App = window.App || {};
     App.dirty = false;
   };
 
+  // ---- undo snapshot (for "I made a mistake" after a wipe) ----
+  // A single deep-cloned snapshot of the run, taken right before a death-causing
+  // action. Restoring it reverts the death (and the wipe it triggered).
+  App._undoSnap = null;
+  App.snapshotForUndo = function () {
+    try { App._undoSnap = JSON.parse(JSON.stringify(App.serializeState())); }
+    catch (e) { App._undoSnap = null; }
+  };
+  App.canUndo = function () { return !!App._undoSnap; };
+  App.undoLastDeath = function () {
+    if (!App._undoSnap) return false;
+    var snap = App._undoSnap;
+    App._undoSnap = null;          // single-use
+    App.applyState(snap, true);    // restore the pre-death state (keep current tab)
+    App.markDirty();
+    return true;
+  };
+
   // Start a fresh game with chosen game key, player count, names, colors.
   App.startNewGame = function (gameKey, playerCount, playerMeta) {
     var s = freshState();
@@ -103,6 +121,7 @@ window.App = window.App || {};
     s.tryCount = (prev.tryCount || 1) + 1;
     s.runLog = (prev.runLog || []).slice(-300); // keep history across restarts
     App.state = s;
+    App._undoSnap = null; // a new attempt invalidates any pending death-undo
     App.logRun('wipe', '☠ run wiped — restarting as Try #' + s.tryCount);
     App.markDirty();
   };

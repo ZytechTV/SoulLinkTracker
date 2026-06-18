@@ -33,6 +33,9 @@ window.App = window.App || {};
     var deadOutcome = effOutcome === 'fail';
     var status = effOutcome === 'success' ? 'alive' : (deadOutcome ? 'dead' : 'uncaught');
 
+    // a failed/reroll encounter creates dead entries -> snapshot so it can be undone
+    if (deadOutcome) App.snapshotForUndo();
+
     var c = {
       id: App.uuid(),
       route: route || '',
@@ -153,6 +156,7 @@ window.App = window.App || {};
     var result = { cascade: false, killed: [], blameId: null, route: c.route };
 
     if (newStatus === 'dead') {
+      App.snapshotForUndo(); // allow undoing this death
       if (blameId != null) c.deathBlame = blameId;
       result.blameId = c.deathBlame;
 
@@ -222,6 +226,7 @@ window.App = window.App || {};
   App.killLink = function (catchId, ownerPlayerId) {
     var c = App.findCatch(catchId);
     if (!c) return null;
+    App.snapshotForUndo(); // allow undoing this death (e.g. misclick -> wipe)
     c.deathBlame = ownerPlayerId; // owner is to blame
     var killed = [];
     c.entries.forEach(function (e) {

@@ -1903,8 +1903,14 @@ window.App = window.App || {};
 			'<p class="hint">Start a new attempt with the same setup (same game &amp; players). Catches reset; this will be <b>Try #' +
 			nextTry +
 			"</b>.</p>" +
+			(App.canUndo && App.canUndo()
+				? '<p class="hint" style="margin-top:10px;color:var(--accent2)">Misclick? You can undo the death that caused this.</p>'
+				: "") +
 			"</div>" +
 			'<div class="modal-foot">' +
+			(App.canUndo && App.canUndo()
+				? '<button class="btn ghost" id="undoDeath" title="Revert the death that ended the run">↩ I made a mistake</button>'
+				: "") +
 			'<div class="spacer"></div>' +
 			'<button class="btn ok big" id="restartRun">New attempt (Try #' +
 			nextTry +
