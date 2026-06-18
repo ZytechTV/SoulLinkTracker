@@ -242,18 +242,35 @@ window.App = window.App || {};
     App.applyState(data);
   };
 
+  // Firebase RTDB drops empty arrays (-> null/undefined) and turns sparse arrays
+  // into objects keyed by index. Normalize any of those back into a plain array.
+  function toArray(v) {
+    if (Array.isArray(v)) return v;
+    if (v && typeof v === 'object') {
+      // object form {0:..,1:..} -> ordered array (numeric keys sorted)
+      return Object.keys(v)
+        .sort(function (a, b) { return (+a) - (+b); })
+        .map(function (k) { return v[k]; });
+    }
+    return []; // null / undefined / scalar
+  }
+
   // Replace App.state from a parsed save/room object (validates + normalizes).
   // keepTab: if true, the current activeTab is preserved (used by live sync so an
   // incoming update doesn't yank a remote user back to the Dashboard).
   App.applyState = function (data, keepTab) {
-    if (!data || !Array.isArray(data.players) || !Array.isArray(data.catches)) {
+    // tolerate Firebase's array quirks: players/catches may arrive as objects
+    // or be missing entirely (empty). Only a missing/empty players list is fatal.
+    var players = toArray(data && data.players);
+    var catches = toArray(data && data.catches);
+    if (!data || !players.length) {
       throw new Error('Invalid data: required fields are missing.');
     }
     var prevTab = App.state && App.state.activeTab;
     var s = freshState();
     s.game = data.game || s.game;
     s.generation = data.generation || (window.REGION_DATA.get(s.game) || {}).gen || s.generation;
-    s.players = data.players.map(function (p, i) {
+    s.players = players.map(function (p, i) {
       return {
         id: p.id != null ? p.id : i + 1,
         name: p.name || ('Player ' + (i + 1)),
@@ -262,14 +279,15 @@ window.App = window.App || {};
         carriedDeaths: p.carriedDeaths || 0
       };
     });
-    s.badges = (Array.isArray(data.badges) && data.badges.length === 8)
-      ? data.badges.map(Boolean)
+    var badgesArr = toArray(data.badges);
+    s.badges = (badgesArr.length === 8)
+      ? badgesArr.map(Boolean)
       : [false, false, false, false, false, false, false, false];
-    s.catches = data.catches.map(function (c) {
+    s.catches = catches.map(function (c) {
       return {
         id: c.id || uuid(),
         route: c.route || '',
-        entries: (c.entries || []).map(function (e) {
+        entries: toArray(c.entries).map(function (e) {
           return {
             playerId: e.playerId,
             pokemon: e.pokemon || '',
