@@ -29,6 +29,8 @@ window.App = window.App || {};
       players: [makePlayer(1), makePlayer(2)],
       badges: [false, false, false, false, false, false, false, false],
       catches: [],
+      // chronological run log of important events (persisted + shared in a room)
+      runLog: [],
       // config
       uncaughtBurnsAll: true,
       // attempt number for this save (incremented on a wipe restart)
@@ -99,7 +101,9 @@ window.App = window.App || {};
     s.started = true;
     s.activeTab = 'Dashboard';
     s.tryCount = (prev.tryCount || 1) + 1;
+    s.runLog = (prev.runLog || []).slice(-300); // keep history across restarts
     App.state = s;
+    App.logRun('wipe', '☠ run wiped — restarting as Try #' + s.tryCount);
     App.markDirty();
   };
 
@@ -215,10 +219,47 @@ window.App = window.App || {};
       players: App.state.players,
       badges: App.state.badges,
       catches: App.state.catches,
+      runLog: (App.state.runLog || []).slice(-300), // cap history size
       uncaughtBurnsAll: App.state.uncaughtBurnsAll,
       tryCount: App.state.tryCount || 1,
       started: true
     };
+  };
+
+  // ---- run log -------------------------------------------------------------
+  // Append a run event to the shared, persisted log. `kind` groups events for
+  // icons/filtering; `actor` is who did it (room name, or fallback). Mirrored to
+  // the room and saved in JSON via serializeState. Does NOT mark dirty by itself
+  // beyond the normal push (caller already mutates state).
+  App.logRun = function (kind, text, actor) {
+    if (!App.state.runLog) App.state.runLog = [];
+    App.state.runLog.push({
+      t: Date.now(),
+      kind: kind || 'info',
+      text: String(text || ''),
+      actor: actor || App.currentActor(),
+      try: App.state.tryCount || 1
+    });
+    if (App.state.runLog.length > 300) App.state.runLog = App.state.runLog.slice(-300);
+    // share/persist immediately (mirrors to room, flags dirty)
+    App.markDirty();
+  };
+
+  // Who is acting right now: the room display name if live, else first player.
+  App.currentActor = function () {
+    if (App.room && App.room.name) return App.room.name;
+    var p = App.state.players && App.state.players[0];
+    return (p && p.name) || 'You';
+  };
+
+  // ---- console log (local, ephemeral: sync status, joins/leaves, errors) ----
+  App.consoleLog = App.consoleLog || [];
+  App._logListeners = App._logListeners || [];
+  App.onLogChange = function (fn) { App._logListeners.push(fn); };
+  App.logConsole = function (level, text) {
+    App.consoleLog.push({ t: Date.now(), level: level || 'info', text: String(text || '') });
+    if (App.consoleLog.length > 200) App.consoleLog = App.consoleLog.slice(-200);
+    App._logListeners.forEach(function (fn) { try { fn(); } catch (e) {} });
   };
 
   App.exportJSON = function () {
@@ -302,6 +343,15 @@ window.App = window.App || {};
         outcome: ['success', 'intentional', 'fail'].indexOf(c.outcome) >= 0 ? c.outcome : 'success',
         reroll: !!c.reroll,
         deathBlame: c.deathBlame != null ? c.deathBlame : null
+      };
+    });
+    s.runLog = toArray(data.runLog).map(function (e) {
+      return {
+        t: typeof e.t === 'number' ? e.t : Date.now(),
+        kind: e.kind || 'info',
+        text: String(e.text || ''),
+        actor: e.actor || '',
+        try: e.try || 1
       };
     });
     if (typeof data.uncaughtBurnsAll === 'boolean') s.uncaughtBurnsAll = data.uncaughtBurnsAll;

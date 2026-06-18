@@ -20,6 +20,91 @@ window.App = window.App || {};
   }
   App.toast = toast;
 
+  // ---------- Log panel (run history + console) ----------
+  var logMode = 'run';   // 'run' | 'console'
+  var logOpen = false;
+  var lastSeen = 0;      // for the unread badge
+
+  function timeStr(t) {
+    var d = new Date(t);
+    return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+  }
+  var RUN_ICON = { catch: '🎯', death: '💀', move: '📦', badge: '🏅', evolve: '✨', wipe: '☠', info: '•' };
+  var CON_ICON = { join: '➕', leave: '➖', sync: '🔌', error: '⚠', info: '•' };
+
+  function logEntries() {
+    return logMode === 'run' ? (App.state.runLog || []) : (App.consoleLog || []);
+  }
+
+  function renderLogPanel() {
+    var panel = document.getElementById('logPanel');
+    if (!panel) return;
+    var entries = logEntries().slice().reverse(); // newest first
+    var rows = entries.length
+      ? entries.map(function (e) {
+          var icon = logMode === 'run'
+            ? (RUN_ICON[e.kind] || '•')
+            : (CON_ICON[e.level] || '•');
+          var who = (logMode === 'run' && e.actor)
+            ? '<span class="log-actor">' + App.esc(e.actor) + '</span> '
+            : '';
+          return '<div class="log-row log-' + App.esc(logMode === 'run' ? e.kind : e.level) + '">' +
+            '<span class="log-time">' + timeStr(e.t) + '</span>' +
+            '<span class="log-ico">' + icon + '</span>' +
+            '<span class="log-text">' + who + App.esc(e.text) + '</span></div>';
+        }).join('')
+      : '<div class="log-empty hint">No entries yet.</div>';
+
+    panel.innerHTML =
+      '<div class="log-head">' +
+      '<div class="log-tabs">' +
+      '<button class="log-tab' + (logMode === 'run' ? ' on' : '') + '" data-logmode="run">Run Log</button>' +
+      '<button class="log-tab' + (logMode === 'console' ? ' on' : '') + '" data-logmode="console">Console</button>' +
+      '</div>' +
+      '<button class="log-close" id="logCloseBtn" title="Close">✕</button>' +
+      '</div>' +
+      '<div class="log-list">' + rows + '</div>';
+  }
+
+  function refreshLogBadge() {
+    var badge = document.getElementById('logBadge');
+    var btn = document.getElementById('logBtn');
+    if (!btn) return;
+    btn.style.display = App.state.started ? '' : 'none';
+    if (!badge) return;
+    if (logOpen) { badge.style.display = 'none'; return; }
+    // count run-log entries newer than lastSeen (the meaningful ones)
+    var unseen = (App.state.runLog || []).filter(function (e) { return e.t > lastSeen; }).length;
+    if (unseen > 0) { badge.textContent = unseen > 99 ? '99+' : unseen; badge.style.display = ''; }
+    else badge.style.display = 'none';
+  }
+
+  function toggleLog(open) {
+    logOpen = (open == null) ? !logOpen : open;
+    var panel = document.getElementById('logPanel');
+    if (logOpen) {
+      renderLogPanel();
+      panel.style.display = '';
+      requestAnimationFrame(function () { panel.classList.add('open'); });
+      lastSeen = Date.now();
+    } else {
+      panel.classList.remove('open');
+      setTimeout(function () { if (!logOpen) panel.style.display = 'none'; }, 200);
+    }
+    refreshLogBadge();
+  }
+  App._refreshLog = function () { if (logOpen) renderLogPanel(); refreshLogBadge(); };
+
+  // open/close + tab switching
+  document.getElementById('logBtn').addEventListener('click', function () { toggleLog(); });
+  document.getElementById('logPanel').addEventListener('click', function (e) {
+    if (e.target.closest('#logCloseBtn')) { toggleLog(false); return; }
+    var tab = e.target.closest('[data-logmode]');
+    if (tab) { logMode = tab.getAttribute('data-logmode'); renderLogPanel(); }
+  });
+  // live updates: console log changes, and re-render after every app render
+  if (App.onLogChange) App.onLogChange(function () { App._refreshLog(); });
+
   function go(tab) {
     App.state.activeTab = tab;
     App.render();
@@ -371,8 +456,10 @@ window.App = window.App || {};
     if (badge) {
       var bi = parseInt(badge.getAttribute('data-badge'), 10);
       App.state.badges[bi] = !App.state.badges[bi];
-      App.markDirty();
-      App._renderers.dashboard();
+      var region = App.regionInfo();
+      var bname = (region && region.badges && region.badges[bi]) ? region.badges[bi] + ' Badge' : 'Badge ' + (bi + 1);
+      App.logRun('badge', (App.state.badges[bi] ? '🏅 earned ' : 'removed ') + bname);
+      App._renderers.dashboard(); // logRun already marked dirty/pushed
       return;
     }
 

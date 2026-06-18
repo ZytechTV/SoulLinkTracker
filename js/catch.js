@@ -66,6 +66,19 @@ window.App = window.App || {};
     };
     App.state.catches.push(c);
     App.recomputeDeaths();
+
+    // run-log entry describing the encounter outcome
+    var mons = c.entries.filter(function (e) { return e.pokemon; })
+      .map(function (e) {
+        var pl = App.playerById(e.playerId);
+        return (App.displayName ? App.displayName(e.pokemon) : e.pokemon) +
+          (pl ? ' (' + pl.name + ')' : '');
+      }).join(', ');
+    var verb = status === 'alive' ? 'caught' : (status === 'dead' ? 'lost (dead)' : 'skipped');
+    var typeLbl = c.catchType === 'static' ? 'static ' : '';
+    App.logRun('catch', 'new ' + typeLbl + 'encounter on ' + (c.route || '?') +
+      ' — ' + verb + (mons ? ': ' + mons : '') + (anyReroll ? ' [reroll death]' : ''));
+
     App.markDirty();
     return c;
   };
@@ -218,6 +231,16 @@ window.App = window.App || {};
       }
     });
     App.recomputeDeaths();
+
+    var owner = App.playerById(ownerPlayerId);
+    var lostMons = c.entries.filter(function (e) { return e.pokemon; })
+      .map(function (e) {
+        var pl = App.playerById(e.playerId);
+        return (App.displayName ? App.displayName(e.pokemon) : e.pokemon) + (pl ? ' (' + pl.name + ')' : '');
+      }).join(', ');
+    App.logRun('death', '💀 link died on ' + (c.route || '?') +
+      (owner ? ' — blamed on ' + owner.name : '') + (lostMons ? ': ' + lostMons : ''));
+
     App.markDirty();
     var wipe = App.checkWipe();
     return { killed: killed, route: c.route, ownerPlayerId: ownerPlayerId, wipe: wipe };
@@ -238,7 +261,14 @@ window.App = window.App || {};
   App.evolveEntry = function (catchId, playerId, newSlug) {
     var entry = App.findEntry(catchId, playerId);
     if (!entry || !newSlug) return;
+    var from = entry.pokemon;
     entry.pokemon = newSlug;
+    var pl = App.playerById(playerId);
+    var fromN = App.displayName ? App.displayName(from) : from;
+    var toN = App.displayName ? App.displayName(newSlug) : newSlug;
+    if (from && from !== newSlug) {
+      App.logRun('evolve', 'evolved ' + fromN + ' → ' + toN + (pl ? ' (' + pl.name + ')' : ''));
+    }
     App.markDirty();
   };
 
@@ -281,6 +311,14 @@ window.App = window.App || {};
     return hit || null;
   };
 
+  // Short label for a link: "Machop/Squirtle (Route 19)".
+  function linkLabel(c) {
+    var mons = c.entries.filter(function (e) { return e.pokemon; })
+      .map(function (e) { return App.displayName ? App.displayName(e.pokemon) : e.pokemon; })
+      .join('/');
+    return (mons || 'link') + (c.route ? ' (' + c.route + ')' : '');
+  }
+
   // Move a catch between team and bank. Soul-linked: the WHOLE catch moves
   // together (all partner entries). Uncaught entries are ignored.
   App.moveEntry = function (catchId, playerId, location) {
@@ -298,6 +336,8 @@ window.App = window.App || {};
       if (!ok) return false;
     }
     members.forEach(function (e) { e.location = location; });
+    App.logRun('move', 'moved link ' + linkLabel(c) + ' to the ' +
+      (location === 'team' ? 'team' : 'bank'));
     App.markDirty();
     return true;
   };
@@ -313,6 +353,11 @@ window.App = window.App || {};
       if (App.teamEntries(playerId).length >= 6) return false; // team full
     }
     entry.location = (location === 'team') ? 'team' : 'bank';
+    var pl = App.playerById(playerId);
+    var nm = App.displayName ? App.displayName(entry.pokemon) : entry.pokemon;
+    var c2 = App.findCatch(catchId);
+    App.logRun('move', 'moved ' + (nm || 'a Pokémon') + (pl ? ' (' + pl.name + ')' : '') +
+      (c2 ? ' [link ' + linkLabel(c2) + ']' : '') + ' to the ' + (location === 'team' ? 'team' : 'bank'));
     App.markDirty();
     return true;
   };

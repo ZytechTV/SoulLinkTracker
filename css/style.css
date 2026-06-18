@@ -1271,3 +1271,68 @@ table.typechart th.corner {
   color: var(--accent); letter-spacing: 1px;
 }
 .cap-row.done .cap-lv { color: var(--muted); }
+
+
+/* ====================================================================
+   Log button + panel (run history / console)
+   ==================================================================== */
+.log-btn {
+  position: fixed; bottom: 16px; left: 16px; z-index: 20000;
+  width: 46px; height: 46px;
+  background: var(--panel2); border: 4px solid var(--border);
+  box-shadow: var(--shadow); font-size: 18px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+}
+.log-btn:hover { border-color: var(--accent); }
+.log-btn-badge {
+  position: absolute; top: -6px; right: -6px;
+  background: var(--danger); color: #fff; border: 2px solid var(--border);
+  font-size: 8px; min-width: 16px; height: 16px; padding: 0 3px;
+  display: flex; align-items: center; justify-content: center; border-radius: 8px;
+}
+.log-panel {
+  position: fixed; bottom: 70px; left: 16px; z-index: 20001;
+  width: 380px; max-width: calc(100vw - 32px);
+  height: 420px; max-height: calc(100vh - 100px);
+  background: var(--panel); border: 4px solid var(--border);
+  box-shadow: 6px 6px 0 var(--border);
+  display: flex; flex-direction: column;
+  transform: translateY(12px); opacity: 0;
+  transition: transform .18s, opacity .18s;
+}
+.log-panel.open { transform: translateY(0); opacity: 1; }
+.log-head {
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 4px solid var(--border); padding: 8px;
+}
+.log-tabs { display: flex; gap: 6px; }
+.log-tab {
+  background: var(--panel2); border: 3px solid var(--border);
+  color: var(--muted); font-family: inherit; font-size: 9px; padding: 6px 10px;
+}
+.log-tab.on { background: var(--accent); color: var(--border); }
+.log-close {
+  background: var(--danger); color: #fff; border: 3px solid var(--border);
+  font-family: inherit; font-size: 9px; padding: 5px 8px;
+}
+.log-list { flex: 1 1 auto; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 4px; }
+.log-empty { padding: 12px; }
+.log-row {
+  display: flex; align-items: baseline; gap: 6px;
+  font-size: 9px; line-height: 1.5; padding: 4px 6px;
+  background: #100e1a; border-left: 3px solid var(--border);
+}
+.log-row.log-death, .log-row.log-wipe { border-left-color: var(--danger); }
+.log-row.log-catch { border-left-color: var(--ok); }
+.log-row.log-badge { border-left-color: var(--accent); }
+.log-row.log-error { border-left-color: var(--danger); }
+.log-row.log-join { border-left-color: var(--ok); }
+.log-row.log-leave { border-left-color: var(--muted); }
+.log-time { color: var(--muted); font-size: 8px; flex: 0 0 auto; }
+.log-ico { flex: 0 0 auto; }
+.log-text { color: var(--ink); flex: 1 1 auto; word-break: break-word; }
+.log-actor { color: var(--accent); }
+
+@media (max-width: 720px) {
+  .log-panel { width: calc(100vw - 32px); height: 60vh; }
+}

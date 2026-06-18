@@ -336,6 +336,7 @@ window.App = window.App || {};
 		else if (t === "Caps") renderLevelCaps();
 		else if (t === "Room") renderRoom();
 		populateDatalist();
+		if (App._refreshLog) App._refreshLog();
 	};
 
 	var datalistDone = false;

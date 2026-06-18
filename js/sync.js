@@ -42,9 +42,11 @@ window.App = window.App || {};
     if (authReady) return authReady;
     if (!App.syncAvailable()) return Promise.reject(new Error('Sync is unavailable.'));
     authReady = firebase.auth().signInAnonymously().then(function () {
+      if (App.logConsole) App.logConsole('sync', 'connected to the sync service');
       return true;
     }).catch(function (e) {
       authReady = null; // allow a retry on next attempt
+      if (App.logConsole) App.logConsole('error', 'sync connection failed: ' + (e.code || e.message));
       throw new Error('Could not connect to the sync service (' + (e.code || e.message) + ').');
     });
     return authReady;
@@ -135,6 +137,7 @@ window.App = window.App || {};
       };
       return d.ref('rooms/' + code).update(payload).then(function () {
         bindRoom(code, pwHash, password, name);
+        if (App.logConsole) App.logConsole('sync', 'opened room "' + code + '"');
         return code;
       });
     });
@@ -162,6 +165,7 @@ window.App = window.App || {};
           App.room.applying = false;
           if (App.render) App.render();
         }
+        if (App.logConsole) App.logConsole('sync', 'joined room "' + code + '" as ' + (name || 'Guest'));
         return code;
       });
     });
@@ -194,9 +198,10 @@ window.App = window.App || {};
     });
 
     App.room.membersRef = d.ref('rooms/' + code + '/members');
+    var prevIds = null; // for join/leave console messages
     App.room.membersRef.on('value', function (snap) {
       var v = snap.val() || {};
-      App.room.members = Object.keys(v).map(function (id) {
+      var next = Object.keys(v).map(function (id) {
         return {
           id: id,
           name: (v[id] && v[id].name) || 'Guest',
@@ -204,6 +209,22 @@ window.App = window.App || {};
           me: id === myId
         };
       }).sort(function (a, b) { return a.joinedAt - b.joinedAt; });
+
+      // diff vs. previous set -> console-log who joined / left (skip first load)
+      if (prevIds && App.logConsole) {
+        var nowIds = {};
+        next.forEach(function (m) { nowIds[m.id] = m.name; });
+        Object.keys(nowIds).forEach(function (id) {
+          if (id !== myId && !prevIds[id]) App.logConsole('join', nowIds[id] + ' joined the room');
+        });
+        Object.keys(prevIds).forEach(function (id) {
+          if (id !== myId && !nowIds[id]) App.logConsole('leave', prevIds[id] + ' left the room');
+        });
+      }
+      prevIds = {};
+      next.forEach(function (m) { prevIds[m.id] = m.name; });
+
+      App.room.members = next;
       emit();
       if (App.state && App.state.activeTab === 'Room' && App.render) App.render();
     });
