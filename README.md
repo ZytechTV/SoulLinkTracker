@@ -41,7 +41,7 @@ the top-right).
 
 1. One person starts a new game (or loads a save) — this automatically opens a
    **live room** with a generated code + password.
-2. Open the **Room** view (click the 🔴 **LIVE** pill, top-right) to copy the
+2. Open the **Room** view (click the 🔴 **SYNCED** pill, top-right) to copy the
    **invite link** (code + password in one) and send it to your friends.
 3. Friends open the link → confirm join → pick a display name → they're in.
 4. Everyone edits the same run live. Anyone can **Export** a JSON backup at any time.
