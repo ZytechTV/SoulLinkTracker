@@ -480,6 +480,22 @@ window.App = window.App || {};
 		);
 	}
 
+	// Start-screen card: join a friend's live room without creating a game first.
+	function joinRoomCardHtml() {
+		if (!App.syncAvailable || !App.syncAvailable()) return "";
+		return (
+			'<div class="card"><h2>🔴 Join Live Room</h2>' +
+			'<p class="hint">A friend opened a room? Enter the code + password to jump ' +
+			"straight into their run — no need to create a game.</p>" +
+			'<div class="field" style="margin-top:10px"><label>Room code</label>' +
+			'<input type="text" id="joinRoomCode" placeholder="e.g. black2-torben" autocomplete="off" /></div>' +
+			'<div class="field" style="margin-top:8px"><label>Password</label>' +
+			'<input type="password" id="joinRoomPw" placeholder="room password" autocomplete="off" /></div>' +
+			'<button class="btn ok" id="joinRoomCardBtn" style="margin-top:12px;width:100%">Join room</button>' +
+			"</div>"
+		);
+	}
+
 	// Live-room controls in the save bar: offline -> create/join buttons;
 	// in a room -> show the code + a leave button.
 	function roomBarHtml() {
@@ -564,6 +580,7 @@ window.App = window.App || {};
 			'<p class="hint">Load a previously exported <b>.json</b> file to continue right where you left off.</p>' +
 			'<button class="btn" id="importBtn" style="margin-top:12px;width:100%">Choose JSON file</button>' +
 			"</div>" +
+			joinRoomCardHtml() +
 			"</div>";
 
 		renderNewPlayerFields(2);

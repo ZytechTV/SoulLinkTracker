@@ -42,13 +42,22 @@ window.App = window.App || {};
     }).catch(function (e) { toast(App.esc(e.message), 'death'); });
   }
 
+  // From the Dashboard save bar (a run is already open -> confirm replacement).
   function joinRoomFlow() {
     if (!App.syncAvailable()) { toast('Live sync is unavailable (offline?).', 'death'); return; }
     var code = prompt('Join a live room.\n\nRoom code:', '');
     if (code == null) return;
     var pw = prompt('Room password:', '');
     if (pw == null) return;
-    if (!confirm('Joining replaces your current run with the room\'s state.\nExport first if you want to keep it. Continue?')) return;
+    doJoinRoom(code, pw, true);
+  }
+
+  // Shared join logic. confirmReplace=true asks before discarding an open run.
+  function doJoinRoom(code, pw, confirmReplace) {
+    if (!App.syncAvailable()) { toast('Live sync is unavailable (offline?).', 'death'); return; }
+    if (!String(code || '').trim()) { toast('Please enter a room code.', 'death'); return; }
+    if (confirmReplace && App.state.started &&
+        !confirm('Joining replaces your current run with the room\'s state.\nExport first if you want to keep it. Continue?')) return;
     App.joinRoom(code, pw).then(function (c) {
       App.render();
       toast('🔴 Joined room <b>' + App.esc(c) + '</b> — now live-syncing.');
@@ -88,6 +97,12 @@ window.App = window.App || {};
     // Live room controls
     if (t.closest('#roomOpenBtn')) { openRoomFlow(); return; }
     if (t.closest('#roomJoinBtn')) { joinRoomFlow(); return; }
+    if (t.closest('#joinRoomCardBtn')) {
+      var jc = document.getElementById('joinRoomCode');
+      var jp = document.getElementById('joinRoomPw');
+      doJoinRoom(jc ? jc.value : '', jp ? jp.value : '', false);
+      return;
+    }
     if (t.closest('#roomLeaveBtn')) {
       App.leaveRoom();
       App.render();
