@@ -47,7 +47,11 @@ window.App = window.App || {};
   App.dirty = false;
 
   // ---- mutation helpers ----
-  App.markDirty = function () { App.dirty = true; };
+  App.markDirty = function () {
+    App.dirty = true;
+    // mirror local edits to the live room (no-op when not in a room)
+    if (App.pushRoomState) App.pushRoomState();
+  };
 
   App.resetState = function () {
     App.state = freshState();
@@ -201,9 +205,11 @@ window.App = window.App || {};
   };
 
   // ---- export / import ----
-  App.exportJSON = function () {
+  // Pure serializer: the savefile/room shape of the current run (no side effects
+  // beyond recomputing derived death counts). Used by export AND live sync.
+  App.serializeState = function () {
     App.recomputeDeaths();
-    var data = {
+    return {
       game: App.state.game,
       generation: App.state.generation,
       players: App.state.players,
@@ -213,6 +219,10 @@ window.App = window.App || {};
       tryCount: App.state.tryCount || 1,
       started: true
     };
+  };
+
+  App.exportJSON = function () {
+    var data = App.serializeState();
     var json = JSON.stringify(data, null, 2);
     var blob = new Blob([json], { type: 'application/json' });
     var url = URL.createObjectURL(blob);
@@ -229,9 +239,17 @@ window.App = window.App || {};
 
   App.importJSON = function (text) {
     var data = JSON.parse(text); // throws on bad JSON -> caller handles
+    App.applyState(data);
+  };
+
+  // Replace App.state from a parsed save/room object (validates + normalizes).
+  // keepTab: if true, the current activeTab is preserved (used by live sync so an
+  // incoming update doesn't yank a remote user back to the Dashboard).
+  App.applyState = function (data, keepTab) {
     if (!data || !Array.isArray(data.players) || !Array.isArray(data.catches)) {
-      throw new Error('Ungültige Datei: erforderliche Felder fehlen.');
+      throw new Error('Invalid data: required fields are missing.');
     }
+    var prevTab = App.state && App.state.activeTab;
     var s = freshState();
     s.game = data.game || s.game;
     s.generation = data.generation || (window.REGION_DATA.get(s.game) || {}).gen || s.generation;
@@ -271,7 +289,7 @@ window.App = window.App || {};
     if (typeof data.uncaughtBurnsAll === 'boolean') s.uncaughtBurnsAll = data.uncaughtBurnsAll;
     s.tryCount = (typeof data.tryCount === 'number' && data.tryCount >= 1) ? data.tryCount : 1;
     s.started = true;
-    s.activeTab = 'Dashboard';
+    s.activeTab = (keepTab && prevTab && prevTab !== 'Setup') ? prevTab : 'Dashboard';
     App.state = s;
     App.recomputeDeaths();
     App.dirty = false;

@@ -480,6 +480,26 @@ window.App = window.App || {};
 		);
 	}
 
+	// Live-room controls in the save bar: offline -> create/join buttons;
+	// in a room -> show the code + a leave button.
+	function roomBarHtml() {
+		if (!App.syncAvailable || !App.syncAvailable()) return ""; // SDK not loaded
+		var inRoom = App.room && App.room.code;
+		if (inRoom) {
+			return (
+				'<span class="room-pill" title="You are live-syncing in this room">' +
+				"🔴 LIVE · " +
+				esc(App.room.code) +
+				"</span>" +
+				'<button class="btn small" id="roomLeaveBtn" title="Stop live syncing">Leave Room</button>'
+			);
+		}
+		return (
+			'<button class="btn small" id="roomOpenBtn" title="Share this run live — others join with the code">Open Room</button>' +
+			'<button class="btn small" id="roomJoinBtn" title="Join a friend\'s live room">Join Room</button>'
+		);
+	}
+
 	// ---------- Setup ----------
 	function gameOptions(selected) {
 		return window.REGION_DATA.groups
@@ -970,6 +990,7 @@ window.App = window.App || {};
 			"</span>" +
 			'<div class="spacer"></div>' +
 			'<div class="save-bar">' +
+			roomBarHtml() +
 			'<button class="btn ok small" id="exportBtn" title="Download save as JSON">Export</button>' +
 			'<button class="btn danger small" id="resetBtn" title="Quit to start screen (export first!)">Quit</button>' +
 			"</div>" +

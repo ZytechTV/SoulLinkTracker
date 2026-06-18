@@ -29,6 +29,35 @@ window.App = window.App || {};
   // resolve a pokemon name typed into a datalist input to a slug (delegates to render.js)
   function nameToSlug(name) { return App.nameToSlug(name); }
 
+  // ---------- Live room flows ----------
+  function openRoomFlow() {
+    if (!App.syncAvailable()) { toast('Live sync is unavailable (offline?).', 'death'); return; }
+    var code = prompt('Open a live room.\n\nRoom code (share this with friends):', App.cleanRoomCode(App.state.game + '-' + (App.state.players[0] ? App.state.players[0].name : '')));
+    if (code == null) return;
+    var pw = prompt('Set a room password (friends need it to join):', '');
+    if (pw == null) return;
+    App.createRoom(code, pw).then(function (c) {
+      App.render();
+      toast('🔴 Room <b>' + App.esc(c) + '</b> is live. Share the code + password.');
+    }).catch(function (e) { toast(App.esc(e.message), 'death'); });
+  }
+
+  function joinRoomFlow() {
+    if (!App.syncAvailable()) { toast('Live sync is unavailable (offline?).', 'death'); return; }
+    var code = prompt('Join a live room.\n\nRoom code:', '');
+    if (code == null) return;
+    var pw = prompt('Room password:', '');
+    if (pw == null) return;
+    if (!confirm('Joining replaces your current run with the room\'s state.\nExport first if you want to keep it. Continue?')) return;
+    App.joinRoom(code, pw).then(function (c) {
+      App.render();
+      toast('🔴 Joined room <b>' + App.esc(c) + '</b> — now live-syncing.');
+    }).catch(function (e) { toast(App.esc(e.message), 'death'); });
+  }
+
+  // re-render the save bar (and warn) when the room status flips, e.g. on errors
+  if (App.onRoomChange) App.onRoomChange(function () { if (App.state.started) App.render(); });
+
   // ---------- Tab nav ----------
   document.getElementById('tabnav').addEventListener('click', function (e) {
     var b = e.target.closest('.tabbtn');
@@ -55,6 +84,16 @@ window.App = window.App || {};
     // Setup buttons
     if (t.closest('#exportBtn')) { App.exportJSON(); toast('Export started ⬇'); return; }
     if (t.closest('#importBtn')) { document.getElementById('importFile').click(); return; }
+
+    // Live room controls
+    if (t.closest('#roomOpenBtn')) { openRoomFlow(); return; }
+    if (t.closest('#roomJoinBtn')) { joinRoomFlow(); return; }
+    if (t.closest('#roomLeaveBtn')) {
+      App.leaveRoom();
+      App.render();
+      toast('Left the room — back to local-only editing.');
+      return;
+    }
     if (t.closest('#resetBtn')) {
       if (confirm('Quit to the start screen? Unsaved data will be lost — export first!')) {
         App.resetState(); App.render(); toast('Quit — back to the start screen.');
