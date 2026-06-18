@@ -1,0 +1,11 @@
+# Local Claude Code settings (machine-specific, not for the public repo)
+.claude/
+
+# OS / editor cruft
+Thumbs.db
+.DS_Store
+*.swp
+
+# Local scratch / exported save files
+__*.html
+*.local.json

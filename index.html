@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Soul Link Tracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="scanlines"></div>
+
+  <!-- Tab navigation -->
+  <nav id="tabnav" class="tabnav">
+    <button class="tabbtn" data-tab="Dashboard">Dashboard</button>
+    <button class="tabbtn" data-tab="Bank">Bank</button>
+    <button class="tabbtn" data-tab="Info">Pokémon Info</button>
+    <button class="tabbtn" data-tab="Catch">Catchrate</button>
+    <button class="tabbtn" data-tab="Caps">Level Caps</button>
+  </nav>
+
+  <!-- Tab panels -->
+  <main class="content">
+    <!-- Setup has no nav button; it is the start screen shown before a game runs -->
+    <section id="tab-Setup" class="tabpanel"></section>
+    <section id="tab-Dashboard" class="tabpanel"></section>
+    <section id="tab-Bank"  class="tabpanel"></section>
+    <section id="tab-Info"  class="tabpanel"></section>
+    <section id="tab-Catch" class="tabpanel"></section>
+    <section id="tab-Caps"  class="tabpanel"></section>
+  </main>
+
+  <!-- Modal host -->
+  <div id="modalRoot" class="modal-root" style="display:none"></div>
+
+  <!-- Pokémon picker overlay (layers above the encounter modal) -->
+  <div id="pickerRoot" class="picker-root" style="display:none"></div>
+
+  <!-- Toast container -->
+  <div id="toasts" class="toasts"></div>
+
+  <!-- hidden file input for import -->
+  <input type="file" id="importFile" accept="application/json,.json" style="display:none" />
+
+  <!-- datalist of all pokemon names for search dropdowns -->
+  <datalist id="pokedex"></datalist>
+
+  <!-- Data -->
+  <script src="data/pokemon.js"></script>
+  <script src="data/types.js"></script>
+  <script src="data/regions.js"></script>
+  <script src="data/levelcaps.js"></script>
+  <!-- App modules (order matters) -->
+  <script src="js/state.js"></script>
+  <script src="js/catch.js"></script>
+  <script src="js/catchrate.js"></script>
+  <script src="js/pokeapi.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/ui.js"></script>
+</body>
+</html>
