@@ -1,8 +1,8 @@
 {
   "rules": {
     "rooms": {
+      ".read": "auth != null",
       "$code": {
-        ".read": "auth != null",
         ".write": "auth != null",
         "pwHash": { ".validate": "newData.isString() && newData.val().length == 64" },
         "owner": { ".validate": "newData.isString()" },

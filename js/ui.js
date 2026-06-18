@@ -96,6 +96,11 @@ window.App = window.App || {};
     }, 300);
   })();
 
+  // ---------- Garbage-collect dead rooms once on startup (best-effort) ----------
+  if (App.cleanupDeadRooms) {
+    setTimeout(function () { App.cleanupDeadRooms(); }, 4000);
+  }
+
   // ---------- Tab nav ----------
   document.getElementById('tabnav').addEventListener('click', function (e) {
     var b = e.target.closest('.tabbtn');

@@ -178,16 +178,32 @@ window.App = window.App || {};
     App.room.ref = ensureDb().ref('rooms/' + code + '/state');
 
     // ---- presence: list who is in the room (auto-removed on disconnect) ----
+    // Best practice: (re)arm the disconnect handler whenever the connection comes
+    // up, so reconnects after a dropout restore our presence entry automatically.
+    var d = ensureDb();
     var myId = App.deviceId();
-    var meRef = ensureDb().ref('rooms/' + code + '/members/' + myId);
-    meRef.set({ name: App.room.name, joinedAt: firebase.database.ServerValue.TIMESTAMP });
-    meRef.onDisconnect().remove();
-    App.room.membersRef = ensureDb().ref('rooms/' + code + '/members');
+    var meRef = d.ref('rooms/' + code + '/members/' + myId);
+    App.room.connRef = d.ref('.info/connected');
+    App.room.connRef.on('value', function (snap) {
+      if (snap.val() !== true) return; // only act when (re)connected
+      // queue the cleanup FIRST (so a drop right after still removes us), then
+      // mark ourselves present.
+      meRef.onDisconnect().remove().then(function () {
+        meRef.set({ name: App.room.name, joinedAt: firebase.database.ServerValue.TIMESTAMP });
+      });
+    });
+
+    App.room.membersRef = d.ref('rooms/' + code + '/members');
     App.room.membersRef.on('value', function (snap) {
       var v = snap.val() || {};
       App.room.members = Object.keys(v).map(function (id) {
-        return { id: id, name: (v[id] && v[id].name) || 'Guest', me: id === myId };
-      }).sort(function (a, b) { return (a.joinedAt || 0) - (b.joinedAt || 0); });
+        return {
+          id: id,
+          name: (v[id] && v[id].name) || 'Guest',
+          joinedAt: (v[id] && v[id].joinedAt) || 0,
+          me: id === myId
+        };
+      }).sort(function (a, b) { return a.joinedAt - b.joinedAt; });
       emit();
       if (App.state && App.state.activeTab === 'Room' && App.render) App.render();
     });
@@ -222,10 +238,15 @@ window.App = window.App || {};
   // Leave the room (stop syncing). silent=true skips the UI notification (used
   // internally when re-binding).
   function leaveRoom(silent) {
-    // remove our presence entry + stop listening to the member list
+    // remove our presence entry, cancel its onDisconnect, stop all listeners
     if (App.room.code) {
-      try { ensureDb().ref('rooms/' + App.room.code + '/members/' + App.deviceId()).remove(); } catch (e) {}
+      try {
+        var meRef = ensureDb().ref('rooms/' + App.room.code + '/members/' + App.deviceId());
+        meRef.onDisconnect().cancel();
+        meRef.remove();
+      } catch (e) {}
     }
+    if (App.room.connRef) { App.room.connRef.off(); App.room.connRef = null; }
     if (App.room.membersRef) { App.room.membersRef.off(); App.room.membersRef = null; }
     if (App.room.ref) { App.room.ref.off(); App.room.ref = null; }
     if (App.room.pushTimer) { clearTimeout(App.room.pushTimer); App.room.pushTimer = null; }
@@ -238,6 +259,39 @@ window.App = window.App || {};
     if (!silent) emit();
   }
   App.leaveRoom = function () { leaveRoom(false); };
+
+  // ---- dead-room cleanup ---------------------------------------------------
+  // Best practice on the free (Spark) tier without Cloud Functions: every client
+  // does a light garbage-collection pass on startup. A room is "dead" only when
+  // it hasn't been updated for longer than the TTL — being momentarily empty is
+  // NOT enough (people pause runs, drop connection, reboot). The 7-day grace
+  // period lets a run sit idle and still be there when everyone comes back.
+  var ROOM_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+  // Scan all rooms and delete ones whose `updatedAt` is older than the TTL.
+  // Reads only the lightweight `updatedAt` of each room (not the full state) by
+  // ordering/limiting on the server side. Runs best-effort; failures are ignored.
+  App.cleanupDeadRooms = function () {
+    var d = ensureDb();
+    if (!d) return Promise.resolve(0);
+    return ensureAuth().then(function () {
+      var cutoff = Date.now() - ROOM_TTL_MS;
+      // pull just the updatedAt of every room via a shallow-ish read
+      return d.ref('rooms').once('value').then(function (snap) {
+        var removals = [];
+        snap.forEach(function (child) {
+          var room = child.val() || {};
+          var updated = typeof room.updatedAt === 'number' ? room.updatedAt : 0;
+          // delete if clearly stale (older than TTL). Age wins over membership,
+          // so orphaned member entries from a crash don't keep a room alive.
+          if (updated && updated < cutoff) {
+            removals.push(child.ref.remove().catch(function () {}));
+          }
+        });
+        return Promise.all(removals).then(function () { return removals.length; });
+      });
+    }).catch(function () { return 0; });
+  };
 
   // One-click invite link for the current room: code + password in the URL hash
   // (the hash is never sent to the server). Empty if not in a room.
