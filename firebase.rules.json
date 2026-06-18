@@ -4,12 +4,9 @@
       "$code": {
         ".read": "auth != null",
         ".write": "auth != null",
-        ".validate": "newData.hasChildren(['state']) || newData.hasChildren(['pwHash','state'])",
         "pwHash": { ".validate": "newData.isString() && newData.val().length == 64" },
-        "owner":  { ".validate": "newData.isString()" },
-        "updatedAt": { ".validate": "newData.isNumber()" },
-        "state": { ".validate": "newData.hasChildren(['players','catches'])" },
-        "$other": { ".validate": false }
+        "owner": { ".validate": "newData.isString()" },
+        "updatedAt": { ".validate": "newData.isNumber()" }
       }
     }
   }
