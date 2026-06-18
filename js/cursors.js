@@ -21,14 +21,29 @@ window.App = window.App || {};
   var STALE_MS = 8000;   // hide cursors whose last update is older than this
   var LERP = 0.35;       // smoothing factor for cursor motion (0..1)
 
-  // ---- position, relative to the main content frame ----------------------
-  // The cursor is tracked as a fraction (rx, ry) of the .content area's size.
-  // Everyone shares the same app layout, so the same fraction lands on the same
-  // place regardless of window size or scroll position — the page scrolls, so
-  // .content's bounding rect already moves with the scroll and we just use it.
+  // ---- position, relative to the main app frame --------------------------
+  // The cursor is tracked as a fraction (rx, ry) of the app frame: the area
+  // spanning from the top of the tab bar (when shown) down to the bottom of
+  // .content, across the full window width. Everyone shares the same layout, so
+  // the same fraction lands on the same place regardless of window size/scroll.
+  // The page scrolls (not .content), so these rects already track the scroll —
+  // and including #tabnav means the tab bar itself is covered too.
   function contentRect() {
     var c = document.querySelector('.content');
-    return c ? c.getBoundingClientRect() : null;
+    if (!c) return null;
+    var cr = c.getBoundingClientRect();
+    var nav = document.getElementById('tabnav');
+    var top = cr.top;
+    if (nav && nav.offsetParent !== null) { // tab bar visible
+      var nr = nav.getBoundingClientRect();
+      if (nr.height > 0) top = Math.min(top, nr.top);
+    }
+    return {
+      left: 0,
+      top: top,
+      width: Math.max(1, window.innerWidth),
+      height: Math.max(1, cr.bottom - top)
+    };
   }
 
   // Sender: turn a viewport point into a fraction of the content frame.
