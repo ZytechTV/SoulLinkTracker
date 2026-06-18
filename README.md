@@ -152,6 +152,17 @@ possible:
 
 ---
 
+## License
+
+The original source code of this project is released under the
+**[MIT License](LICENSE)** © Torben Kley (ZytechTV).
+
+The MIT license covers only the code written for this app. It does **not** cover
+the third-party data and assets listed above (Pokémon names, sprites, game data,
+…), which remain the property of their respective owners.
+
+---
+
 This is a non-commercial fan project for personal use and is **not affiliated with,
 endorsed by, or sponsored by Nintendo, Game Freak, or The Pokémon Company**.
 Pokémon and Pokémon character names are trademarks of Nintendo. All referenced
