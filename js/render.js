@@ -323,7 +323,7 @@ window.App = window.App || {};
 		// gate: before a game is started, force the Setup start screen
 		if (!App.state.started) App.state.activeTab = "Setup";
 		// only Dashboard + Bank exist as tabs now; fall back to Dashboard
-		else if (["Dashboard", "Bank", "Info", "Catch", "Caps"].indexOf(App.state.activeTab) < 0)
+		else if (["Dashboard", "Bank", "Info", "Catch", "Caps", "Room"].indexOf(App.state.activeTab) < 0)
 			App.state.activeTab = "Dashboard";
 		renderTabsActive();
 		var t = App.state.activeTab;
@@ -333,6 +333,7 @@ window.App = window.App || {};
 		else if (t === "Info") renderPokemonInfo();
 		else if (t === "Catch") renderCatchRate();
 		else if (t === "Caps") renderLevelCaps();
+		else if (t === "Room") renderRoom();
 		populateDatalist();
 	};
 
@@ -496,24 +497,18 @@ window.App = window.App || {};
 		);
 	}
 
-	// Live-room controls in the save bar: offline -> create/join buttons;
-	// in a room -> show the code + a leave button.
+	// Live-room status pill in the save bar (controls live in the Room tab).
 	function roomBarHtml() {
-		if (!App.syncAvailable || !App.syncAvailable()) return ""; // SDK not loaded
-		var inRoom = App.room && App.room.code;
-		if (inRoom) {
+		if (!App.syncAvailable || !App.syncAvailable()) return "";
+		if (App.room && App.room.code) {
 			return (
-				'<span class="room-pill" title="You are live-syncing in this room">' +
+				'<span class="room-pill" data-tab="Room" title="Live — open the Room tab to share or leave">' +
 				"🔴 LIVE · " +
 				esc(App.room.code) +
-				"</span>" +
-				'<button class="btn small" id="roomLeaveBtn" title="Stop live syncing">Leave Room</button>'
+				"</span>"
 			);
 		}
-		return (
-			'<button class="btn small" id="roomOpenBtn" title="Share this run live — others join with the code">Open Room</button>' +
-			'<button class="btn small" id="roomJoinBtn" title="Join a friend\'s live room">Join Room</button>'
-		);
+		return '<span class="room-pill off" title="Not in a live room">⚪ offline</span>';
 	}
 
 	// ---------- Setup ----------
@@ -3049,6 +3044,63 @@ window.App = window.App || {};
 	App._renderCatchRate = renderCatchRate;
 
 	// ====================================================================
+	// Room tab — share the live room (code + password) or join another one.
+	// Every game is automatically a room (see ui.js autoStartRoom).
+	// ====================================================================
+	function renderRoom() {
+		var host = el("tab-Room");
+		if (!App.syncAvailable || !App.syncAvailable()) {
+			host.innerHTML =
+				'<div class="card"><h2>Live Room</h2>' +
+				'<p class="hint">Live sync is unavailable right now (offline, or the ' +
+				"sync service couldn't be reached). The game still works locally and " +
+				"you can export/import JSON as usual.</p></div>";
+			return;
+		}
+
+		var inRoom = App.room && App.room.code;
+		if (inRoom) {
+			var pw = App.room.password;
+			var pwRow = pw
+				? '<div class="room-field"><label>Password</label>' +
+					'<div class="room-val"><code>' + esc(pw) + "</code>" +
+					'<button class="btn small" data-roomcopy="' + esc(pw) + '">Copy</button></div></div>'
+				: '<div class="room-field"><label>Password</label>' +
+					'<p class="hint">This password was set on another device, so it can\'t be ' +
+					"shown here. Ask whoever opened the room for it.</p></div>";
+
+			host.innerHTML =
+				'<div class="card"><h2>🔴 Live Room</h2>' +
+				'<p class="hint">This run is live. Share the code and password below so ' +
+				"friends can join and edit together in real time. Everyone can still " +
+				"export the run to JSON at any time.</p>" +
+				'<div class="room-share">' +
+				'<div class="room-field"><label>Room code</label>' +
+				'<div class="room-val"><code>' + esc(App.room.code) + "</code>" +
+				'<button class="btn small" data-roomcopy="' + esc(App.room.code) + '">Copy</button></div></div>' +
+				pwRow +
+				"</div>" +
+				'<button class="btn danger" id="roomLeaveBtn" style="margin-top:16px">Leave room (go local-only)</button>' +
+				"</div>";
+			return;
+		}
+
+		// not in a room (rare: e.g. sync failed at start) -> offer to join one
+		host.innerHTML =
+			'<div class="card"><h2>Live Room</h2>' +
+			'<p class="hint">You are not in a live room. Start or load a game to open ' +
+			"one automatically, or join a friend's room below.</p>" +
+			'<div class="room-share" style="margin-top:12px">' +
+			'<div class="room-field"><label>Room code</label>' +
+			'<input type="text" id="joinRoomCode" placeholder="e.g. black2-abc12" autocomplete="off" /></div>' +
+			'<div class="room-field"><label>Password</label>' +
+			'<input type="password" id="joinRoomPw" placeholder="room password" autocomplete="off" /></div>' +
+			"</div>" +
+			'<button class="btn ok" id="joinRoomCardBtn" style="margin-top:14px">Join room</button>' +
+			"</div>";
+	}
+
+	// ====================================================================
 	// Level Caps — hardcore-nuzlocke caps (highest boss Pokémon level) for the
 	// current game, in story order. The "current" cap is the next boss you have
 	// not beaten yet, derived from the badge count on the Dashboard.
@@ -3134,5 +3186,6 @@ window.App = window.App || {};
 		info: renderPokemonInfo,
 		catch: renderCatchRate,
 		caps: renderLevelCaps,
+		room: renderRoom,
 	};
 })(window.App);

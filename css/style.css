@@ -65,14 +65,29 @@ button {
   align-self: center;
 }
 .save-bar { display: flex; gap: 6px; align-self: center; flex-wrap: wrap; align-items: center; }
-/* live-room status pill */
+/* live-room status pill (click -> Room tab) */
 .room-pill {
-  display: inline-flex; align-items: center; gap: 4px;
+  display: inline-flex; align-items: center; gap: 4px; cursor: pointer;
   background: var(--panel2); border: 3px solid var(--danger);
   color: var(--ink); font-size: 8px; padding: 5px 8px; letter-spacing: .5px;
   animation: roomPulse 2s ease-in-out infinite;
 }
+.room-pill.off { border-color: var(--border); animation: none; cursor: default; color: var(--muted); }
 @keyframes roomPulse { 0%,100% { border-color: var(--danger); } 50% { border-color: #7a1f1f; } }
+
+/* push the Room tab to the right edge of the tab bar */
+.tabbtn-room { margin-left: auto; }
+
+/* Room tab: share code/password fields */
+.room-share { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 14px; }
+.room-field { display: flex; flex-direction: column; gap: 5px; min-width: 200px; }
+.room-field > label { font-size: 9px; color: var(--accent2); }
+.room-val { display: flex; align-items: center; gap: 8px; }
+.room-val code {
+  background: #100e1a; border: 3px solid var(--border);
+  color: var(--accent); font-size: 14px; padding: 7px 12px; letter-spacing: 1px;
+  user-select: all;
+}
 /* Game Over modal */
 .modal.gameover { max-width: 460px; border-color: var(--danger); }
 .modal.gameover .modal-head h2 { color: var(--danger); }

@@ -55,12 +55,29 @@ window.App = window.App || {};
   // ---- live room state (in-memory, not persisted) ----
   App.room = {
     code: null,        // current room code (null = offline)
-    pwHash: null,      // sha-256 of the password (sent as the rules "auth" token)
+    password: null,    // PLAINTEXT password, kept locally so we can show it for
+                       // sharing (only the hash is ever stored in the DB)
+    pwHash: null,      // sha-256 of the password
     ref: null,         // firebase ref for rooms/<code>/state
     applying: false,   // true while applying a remote update (suppresses push)
     pushTimer: null,   // debounce timer for outgoing pushes
     listeners: []      // ui callbacks on room status changes
   };
+
+  // Generate a short, friendly, hard-to-guess room code and password.
+  function randStr(len, alphabet) {
+    var a = alphabet || 'abcdefghijkmnpqrstuvwxyz23456789'; // no look-alikes
+    var out = '';
+    var arr = new Uint32Array(len);
+    crypto.getRandomValues(arr);
+    for (var i = 0; i < len; i++) out += a[arr[i] % a.length];
+    return out;
+  }
+  App.genRoomCode = function (gameKey) {
+    var base = cleanCode(gameKey || 'run');
+    return (base ? base + '-' : '') + randStr(5);
+  };
+  App.genRoomPassword = function () { return randStr(8); };
 
   function emit() {
     App.room.listeners.forEach(function (fn) {
@@ -106,7 +123,7 @@ window.App = window.App || {};
         state: App.serializeState()
       };
       return d.ref('rooms/' + code).update(payload).then(function () {
-        bindRoom(code, pwHash);
+        bindRoom(code, pwHash, password);
         return code;
       });
     });
@@ -127,7 +144,7 @@ window.App = window.App || {};
         if (!snap.exists()) throw new Error('Room "' + code + '" does not exist.');
         var data = snap.val();
         if (!data || data.pwHash !== pwHash) throw new Error('Wrong password for room "' + code + '".');
-        bindRoom(code, pwHash);
+        bindRoom(code, pwHash, password || '');
         if (data.state) {
           App.room.applying = true;
           App.applyState(data.state, true);
@@ -140,10 +157,11 @@ window.App = window.App || {};
   };
 
   // Start mirroring local changes -> room, and room updates -> local.
-  function bindRoom(code, pwHash) {
+  function bindRoom(code, pwHash, password) {
     leaveRoom(true); // drop any previous binding first (no UI emit yet)
     App.room.code = code;
     App.room.pwHash = pwHash;
+    App.room.password = password != null ? password : null;
     App.room.ref = ensureDb().ref('rooms/' + code + '/state');
 
     // remote -> local
@@ -180,6 +198,7 @@ window.App = window.App || {};
     if (App.room.pushTimer) { clearTimeout(App.room.pushTimer); App.room.pushTimer = null; }
     App.room.code = null;
     App.room.pwHash = null;
+    App.room.password = null;
     App.room.applying = false;
     if (!silent) emit();
   }

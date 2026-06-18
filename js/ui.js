@@ -30,29 +30,23 @@ window.App = window.App || {};
   function nameToSlug(name) { return App.nameToSlug(name); }
 
   // ---------- Live room flows ----------
-  function openRoomFlow() {
-    if (!App.syncAvailable()) { toast('Live sync is unavailable (offline?).', 'death'); return; }
-    var code = prompt('Open a live room.\n\nRoom code (share this with friends):', App.cleanRoomCode(App.state.game + '-' + (App.state.players[0] ? App.state.players[0].name : '')));
-    if (code == null) return;
-    var pw = prompt('Set a room password (friends need it to join):', '');
-    if (pw == null) return;
+  // Every new/loaded game automatically becomes a live room with a generated
+  // code + password (shown in the Room tab for sharing). Best-effort: if sync is
+  // unavailable the game still works locally.
+  function autoStartRoom(gameKey) {
+    if (!App.syncAvailable || !App.syncAvailable()) return;
+    if (App.room && App.room.code) return; // already in a room (e.g. after join)
+    var code = App.genRoomCode(gameKey);
+    var pw = App.genRoomPassword();
     App.createRoom(code, pw).then(function (c) {
       App.render();
-      toast('🔴 Room <b>' + App.esc(c) + '</b> is live. Share the code + password.');
-    }).catch(function (e) { toast(App.esc(e.message), 'death'); });
+      toast('🔴 Live room <b>' + App.esc(c) + '</b> created. Share it from the Room tab.');
+    }).catch(function (e) {
+      toast('Live room could not start (' + App.esc(e.message) + '). Playing locally.', 'death');
+    });
   }
 
-  // From the Dashboard save bar (a run is already open -> confirm replacement).
-  function joinRoomFlow() {
-    if (!App.syncAvailable()) { toast('Live sync is unavailable (offline?).', 'death'); return; }
-    var code = prompt('Join a live room.\n\nRoom code:', '');
-    if (code == null) return;
-    var pw = prompt('Room password:', '');
-    if (pw == null) return;
-    doJoinRoom(code, pw, true);
-  }
-
-  // Shared join logic. confirmReplace=true asks before discarding an open run.
+  // Join a friend's room (from the start-screen card or the Room tab).
   function doJoinRoom(code, pw, confirmReplace) {
     if (!App.syncAvailable()) { toast('Live sync is unavailable (offline?).', 'death'); return; }
     if (!String(code || '').trim()) { toast('Please enter a room code.', 'death'); return; }
@@ -64,7 +58,7 @@ window.App = window.App || {};
     }).catch(function (e) { toast(App.esc(e.message), 'death'); });
   }
 
-  // re-render the save bar (and warn) when the room status flips, e.g. on errors
+  // re-render when the room status flips (so the Room tab + indicator update)
   if (App.onRoomChange) App.onRoomChange(function () { if (App.state.started) App.render(); });
 
   // ---------- Tab nav ----------
@@ -79,7 +73,7 @@ window.App = window.App || {};
   document.querySelector('.content').addEventListener('click', function (e) {
     var t = e.target;
 
-    // Start screen: start new game
+    // Start screen: start new game (each game is automatically a live room)
     if (t.closest('#startGameBtn')) {
       var gsel = document.getElementById('newGameSelect');
       var psel = document.getElementById('newPlayerCount');
@@ -87,6 +81,7 @@ window.App = window.App || {};
       App.startNewGame(gsel.value, n, App._newGameMeta.slice(0, n));
       App.render();
       toast('Good luck on your ' + App.esc(gsel.value) + ' challenge!');
+      autoStartRoom(gsel.value);
       return;
     }
 
@@ -94,9 +89,11 @@ window.App = window.App || {};
     if (t.closest('#exportBtn')) { App.exportJSON(); toast('Export started ⬇'); return; }
     if (t.closest('#importBtn')) { document.getElementById('importFile').click(); return; }
 
+    // click the LIVE pill -> open the Room tab
+    var pill = t.closest('.room-pill[data-tab]');
+    if (pill) { go(pill.getAttribute('data-tab')); return; }
+
     // Live room controls
-    if (t.closest('#roomOpenBtn')) { openRoomFlow(); return; }
-    if (t.closest('#roomJoinBtn')) { joinRoomFlow(); return; }
     if (t.closest('#joinRoomCardBtn')) {
       var jc = document.getElementById('joinRoomCode');
       var jp = document.getElementById('joinRoomPw');
@@ -104,9 +101,19 @@ window.App = window.App || {};
       return;
     }
     if (t.closest('#roomLeaveBtn')) {
+      if (!confirm('Leave the live room? Others stay in it; you go local-only.\nThe game itself keeps running.')) return;
       App.leaveRoom();
       App.render();
-      toast('Left the room — back to local-only editing.');
+      toast('Left the room — playing locally now.');
+      return;
+    }
+    // copy a room field (code/password) to the clipboard
+    var copyBtn = t.closest('[data-roomcopy]');
+    if (copyBtn) {
+      var val = copyBtn.getAttribute('data-roomcopy');
+      if (navigator.clipboard) navigator.clipboard.writeText(val).then(function () {
+        toast('Copied to clipboard ✓');
+      }).catch(function () { toast('Copy failed — select it manually.', 'death'); });
       return;
     }
     if (t.closest('#resetBtn')) {
@@ -1069,6 +1076,7 @@ window.App = window.App || {};
         App.importJSON(reader.result);
         App.render();
         toast('Import successful ✓');
+        autoStartRoom(App.state.game); // loaded save becomes a live room too
       } catch (err) {
         toast('Import failed: ' + App.esc(err.message), 'death');
       }
