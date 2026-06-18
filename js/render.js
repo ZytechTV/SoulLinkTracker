@@ -372,8 +372,8 @@ window.App = window.App || {};
 		});
 	}
 
-	// Right-aligned global actions inside the tab bar: compact LIVE status pill
-	// (click -> Room tab), save (💾) and quit (✕). Only while a game is running.
+	// Right-aligned global actions inside the tab bar: LIVE/offline status pill
+	// (click -> Room view), square save (💾) and quit (✕). Only while running.
 	function renderTabActions() {
 		var host = el("tabActions");
 		if (!host) return;
@@ -382,13 +382,13 @@ window.App = window.App || {};
 		var live = "";
 		if (App.syncAvailable && App.syncAvailable()) {
 			live = (App.room && App.room.code)
-				? '<span class="room-pill" data-tab="Room" title="Live — click to open the Room tab">🔴 LIVE</span>'
-				: '<span class="room-pill off" data-tab="Room" title="Not in a live room — open the Room tab">⚪ offline</span>';
+				? '<span class="room-pill" data-tab="Room" title="Live — click for room code, password & members">🔴 LIVE</span>'
+				: '<span class="room-pill off" data-tab="Room" title="Not in a live room — click to open the room view">⚪ offline</span>';
 		}
 		host.innerHTML =
 			live +
-			'<button class="btn ok small ta-btn" id="taExportBtn" title="Save / download as JSON">💾<span class="ta-lbl">&nbsp;Speicherkarte</span></button>' +
-			'<button class="btn danger small ta-btn" id="taResetBtn" title="Quit to start screen (export first!)">✕</button>';
+			'<button class="btn ok ta-btn ta-square" id="taExportBtn" title="Save / download as JSON">💾</button>' +
+			'<button class="btn danger ta-btn ta-square" id="taResetBtn" title="Quit to start screen (export first!)">✕</button>';
 	}
 
 	// Current hardcore level cap for the active game, derived from earned badges.

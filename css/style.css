@@ -85,10 +85,15 @@ button {
 /* right-aligned global actions inside the tab bar (LIVE pill, save, quit) */
 .tab-actions {
   margin-left: auto;
-  display: inline-flex; align-items: center; gap: 6px;
+  display: inline-flex; align-items: stretch; gap: 6px;
 }
-.tab-actions .ta-btn { padding: 8px 12px; font-size: 11px; }
-.tab-actions .room-pill { font-size: 9px; padding: 7px 10px; }
+.tab-actions .room-pill { font-size: 9px; padding: 7px 10px; align-self: center; }
+/* square action buttons, matching the tab buttons' height (10px*2 + ~17px text) */
+.tab-actions .ta-square {
+  width: 44px; height: 44px; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; box-shadow: 2px 2px 0 rgba(0,0,0,.3);
+}
 
 /* Room tab: share code/password fields */
 .room-share { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 14px; }
@@ -556,7 +561,7 @@ table.typechart th.corner {
 /* ---------- Toasts ---------- */
 .toasts {
   position: fixed;
-  bottom: 16px; right: 16px;
+  bottom: 74px; right: 16px; /* sit above the log button (bottom-right) */
   z-index: 20000; /* above modal (11000) and picker (12000) backdrops */
   display: flex; flex-direction: column; gap: 8px;
   max-width: 360px;
@@ -1277,7 +1282,7 @@ table.typechart th.corner {
    Log button + panel (run history / console)
    ==================================================================== */
 .log-btn {
-  position: fixed; bottom: 16px; left: 16px; z-index: 20000;
+  position: fixed; bottom: 16px; right: 16px; z-index: 20002;
   width: 46px; height: 46px;
   background: var(--panel2); border: 4px solid var(--border);
   box-shadow: var(--shadow); font-size: 18px; line-height: 1;
@@ -1291,7 +1296,7 @@ table.typechart th.corner {
   display: flex; align-items: center; justify-content: center; border-radius: 8px;
 }
 .log-panel {
-  position: fixed; bottom: 70px; left: 16px; z-index: 20001;
+  position: fixed; bottom: 70px; right: 16px; z-index: 20001;
   width: 380px; max-width: calc(100vw - 32px);
   height: 420px; max-height: calc(100vh - 100px);
   background: var(--panel); border: 4px solid var(--border);
