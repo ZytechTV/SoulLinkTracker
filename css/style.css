@@ -88,6 +88,18 @@ button {
   color: var(--accent); font-size: 14px; padding: 7px 12px; letter-spacing: 1px;
   user-select: all;
 }
+/* masked / non-revealing values (password, invite link) */
+.room-val code.room-secret {
+  color: var(--muted); font-size: 10px; letter-spacing: 2px; user-select: none;
+}
+/* presence list */
+.room-members { display: flex; flex-wrap: wrap; gap: 8px; }
+.room-member {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: #100e1a; border: 3px solid var(--border);
+  font-size: 9px; color: var(--ink); padding: 5px 9px;
+}
+.room-member.me { border-color: var(--accent); }
 /* Game Over modal */
 .modal.gameover { max-width: 460px; border-color: var(--danger); }
 .modal.gameover .modal-head h2 { color: var(--danger); }

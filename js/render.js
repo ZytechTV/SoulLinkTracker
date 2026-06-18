@@ -3060,26 +3060,45 @@ window.App = window.App || {};
 
 		var inRoom = App.room && App.room.code;
 		if (inRoom) {
-			var pw = App.room.password;
-			var pwRow = pw
+			// password: copy-only, never shown. Only available if WE set/entered it.
+			var pwRow = App.room.password
 				? '<div class="room-field"><label>Password</label>' +
-					'<div class="room-val"><code>' + esc(pw) + "</code>" +
-					'<button class="btn small" data-roomcopy="' + esc(pw) + '">Copy</button></div></div>'
+					'<div class="room-val"><code class="room-secret">••••••••</code>' +
+					'<button class="btn small" data-roomcopy="' + esc(App.room.password) + '">Copy</button></div></div>'
 				: '<div class="room-field"><label>Password</label>' +
-					'<p class="hint">This password was set on another device, so it can\'t be ' +
-					"shown here. Ask whoever opened the room for it.</p></div>";
+					'<p class="hint">Set on another device — ask whoever opened the room.</p></div>';
+
+			// invite link: copy-only, never shown (contains the password)
+			var invite = App.inviteLink();
+			var inviteRow = (invite && App.room.password)
+				? '<div class="room-field" style="flex:1 1 100%"><label>Invite link (1-click join)</label>' +
+					'<div class="room-val"><code class="room-secret">🔗 link with code + password — copy &amp; send</code>' +
+					'<button class="btn small ok" data-roomcopy="' + esc(invite) + '">Copy link</button></div></div>'
+				: "";
+
+			// presence list
+			var members = (App.room.members || []);
+			var memberHtml = members.length
+				? members.map(function (m) {
+						return '<span class="room-member' + (m.me ? " me" : "") + '">' +
+							"🟢 " + esc(m.name) + (m.me ? " (you)" : "") + "</span>";
+					}).join("")
+				: '<span class="hint">Just you so far.</span>';
 
 			host.innerHTML =
 				'<div class="card"><h2>🔴 Live Room</h2>' +
-				'<p class="hint">This run is live. Share the code and password below so ' +
-				"friends can join and edit together in real time. Everyone can still " +
-				"export the run to JSON at any time.</p>" +
+				'<p class="hint">This run is live. Send the invite link (or the code + ' +
+				"password) so friends can join and edit together in real time. Everyone " +
+				"can still export the run to JSON at any time.</p>" +
 				'<div class="room-share">' +
 				'<div class="room-field"><label>Room code</label>' +
 				'<div class="room-val"><code>' + esc(App.room.code) + "</code>" +
 				'<button class="btn small" data-roomcopy="' + esc(App.room.code) + '">Copy</button></div></div>' +
 				pwRow +
+				inviteRow +
 				"</div>" +
+				'<h3 style="margin-top:16px">In this room (' + members.length + ")</h3>" +
+				'<div class="room-members">' + memberHtml + "</div>" +
 				'<button class="btn danger" id="roomLeaveBtn" style="margin-top:16px">Leave room (go local-only)</button>' +
 				"</div>";
 			return;

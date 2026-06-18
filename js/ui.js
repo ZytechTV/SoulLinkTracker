@@ -30,36 +30,69 @@ window.App = window.App || {};
   function nameToSlug(name) { return App.nameToSlug(name); }
 
   // ---------- Live room flows ----------
+  // Ask once for a display name (remembered on the device). Returns null if the
+  // user cancels.
+  function askName() {
+    var saved = App.savedName();
+    var n = prompt('Your display name (shown to others in the room):', saved || '');
+    if (n == null) return null;
+    n = n.trim().slice(0, 24) || 'Guest';
+    App.rememberName(n);
+    return n;
+  }
+
   // Every new/loaded game automatically becomes a live room with a generated
   // code + password (shown in the Room tab for sharing). Best-effort: if sync is
   // unavailable the game still works locally.
   function autoStartRoom(gameKey) {
     if (!App.syncAvailable || !App.syncAvailable()) return;
     if (App.room && App.room.code) return; // already in a room (e.g. after join)
+    var name = App.savedName() || (App.state.players[0] && App.state.players[0].name) || 'Host';
+    App.rememberName(name);
     var code = App.genRoomCode(gameKey);
     var pw = App.genRoomPassword();
-    App.createRoom(code, pw).then(function (c) {
+    App.createRoom(code, pw, name).then(function (c) {
       App.render();
-      toast('🔴 Live room <b>' + App.esc(c) + '</b> created. Share it from the Room tab.');
+      toast('🔴 Live room <b>' + App.esc(c) + '</b> created. Invite friends from the Room tab.');
     }).catch(function (e) {
       toast('Live room could not start (' + App.esc(e.message) + '). Playing locally.', 'death');
     });
   }
 
-  // Join a friend's room (from the start-screen card or the Room tab).
+  // Join a friend's room (from the start-screen card, Room tab, or invite link).
   function doJoinRoom(code, pw, confirmReplace) {
     if (!App.syncAvailable()) { toast('Live sync is unavailable (offline?).', 'death'); return; }
     if (!String(code || '').trim()) { toast('Please enter a room code.', 'death'); return; }
     if (confirmReplace && App.state.started &&
         !confirm('Joining replaces your current run with the room\'s state.\nExport first if you want to keep it. Continue?')) return;
-    App.joinRoom(code, pw).then(function (c) {
+    var name = askName();
+    if (name == null) return;
+    App.joinRoom(code, pw, name).then(function (c) {
       App.render();
-      toast('🔴 Joined room <b>' + App.esc(c) + '</b> — now live-syncing.');
+      toast('🔴 Joined room <b>' + App.esc(c) + '</b> as <b>' + App.esc(name) + '</b> — live now.');
     }).catch(function (e) { toast(App.esc(e.message), 'death'); });
   }
 
   // re-render when the room status flips (so the Room tab + indicator update)
   if (App.onRoomChange) App.onRoomChange(function () { if (App.state.started) App.render(); });
+
+  // ---------- Invite link: auto-join if the page was opened with #room=... ----
+  (function () {
+    if (!App.parseInvite) return;
+    var inv = App.parseInvite();
+    if (!inv) return;
+    App.clearInvite(); // strip code+password from the address bar immediately
+    // wait a tick so the rest of the app is ready, then offer to join
+    setTimeout(function () {
+      if (!App.syncAvailable || !App.syncAvailable()) {
+        toast('Invite link found, but live sync is unavailable.', 'death');
+        return;
+      }
+      if (confirm('You opened an invite to room "' + inv.code + '".\nJoin it now?')) {
+        doJoinRoom(inv.code, inv.pw, true);
+      }
+    }, 300);
+  })();
 
   // ---------- Tab nav ----------
   document.getElementById('tabnav').addEventListener('click', function (e) {

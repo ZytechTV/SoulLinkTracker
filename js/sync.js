@@ -55,13 +55,24 @@ window.App = window.App || {};
   // ---- live room state (in-memory, not persisted) ----
   App.room = {
     code: null,        // current room code (null = offline)
-    password: null,    // PLAINTEXT password, kept locally so we can show it for
+    password: null,    // PLAINTEXT password, kept locally so we can copy it for
                        // sharing (only the hash is ever stored in the DB)
     pwHash: null,      // sha-256 of the password
+    name: null,        // this user's display name in the room
     ref: null,         // firebase ref for rooms/<code>/state
+    membersRef: null,  // firebase ref for rooms/<code>/members
+    members: [],       // [{ id, name }] currently present (live)
     applying: false,   // true while applying a remote update (suppresses push)
     pushTimer: null,   // debounce timer for outgoing pushes
     listeners: []      // ui callbacks on room status changes
+  };
+
+  // Remembered display name (so we don't re-ask every time on a device).
+  App.savedName = function () {
+    try { return localStorage.getItem('sl-name') || ''; } catch (e) { return ''; }
+  };
+  App.rememberName = function (n) {
+    try { if (n) localStorage.setItem('sl-name', n); } catch (e) {}
   };
 
   // Generate a short, friendly, hard-to-guess room code and password.
@@ -105,8 +116,8 @@ window.App = window.App || {};
   // ---- create / join / leave ----------------------------------------------
 
   // Create (or overwrite) a room with the current App.state and a password.
-  // Resolves with the code on success.
-  App.createRoom = function (rawCode, password) {
+  // name = this user's display name in the room. Resolves with the code.
+  App.createRoom = function (rawCode, password, name) {
     var d = ensureDb();
     if (!d) return Promise.reject(new Error('Sync is unavailable (offline?).'));
     var code = cleanCode(rawCode);
@@ -123,15 +134,15 @@ window.App = window.App || {};
         state: App.serializeState()
       };
       return d.ref('rooms/' + code).update(payload).then(function () {
-        bindRoom(code, pwHash, password);
+        bindRoom(code, pwHash, password, name);
         return code;
       });
     });
   };
 
   // Join an existing room: verify the password against the stored hash, then
-  // pull its state and start listening.
-  App.joinRoom = function (rawCode, password) {
+  // pull its state and start listening. name = this user's display name.
+  App.joinRoom = function (rawCode, password, name) {
     var d = ensureDb();
     if (!d) return Promise.reject(new Error('Sync is unavailable (offline?).'));
     var code = cleanCode(rawCode);
@@ -144,7 +155,7 @@ window.App = window.App || {};
         if (!snap.exists()) throw new Error('Room "' + code + '" does not exist.');
         var data = snap.val();
         if (!data || data.pwHash !== pwHash) throw new Error('Wrong password for room "' + code + '".');
-        bindRoom(code, pwHash, password || '');
+        bindRoom(code, pwHash, password || '', name);
         if (data.state) {
           App.room.applying = true;
           App.applyState(data.state, true);
@@ -156,13 +167,30 @@ window.App = window.App || {};
     });
   };
 
-  // Start mirroring local changes -> room, and room updates -> local.
-  function bindRoom(code, pwHash, password) {
+  // Start mirroring local changes -> room, room updates -> local, and register
+  // this user in the room's live presence list.
+  function bindRoom(code, pwHash, password, name) {
     leaveRoom(true); // drop any previous binding first (no UI emit yet)
     App.room.code = code;
     App.room.pwHash = pwHash;
     App.room.password = password != null ? password : null;
+    App.room.name = name || App.savedName() || 'Guest';
     App.room.ref = ensureDb().ref('rooms/' + code + '/state');
+
+    // ---- presence: list who is in the room (auto-removed on disconnect) ----
+    var myId = App.deviceId();
+    var meRef = ensureDb().ref('rooms/' + code + '/members/' + myId);
+    meRef.set({ name: App.room.name, joinedAt: firebase.database.ServerValue.TIMESTAMP });
+    meRef.onDisconnect().remove();
+    App.room.membersRef = ensureDb().ref('rooms/' + code + '/members');
+    App.room.membersRef.on('value', function (snap) {
+      var v = snap.val() || {};
+      App.room.members = Object.keys(v).map(function (id) {
+        return { id: id, name: (v[id] && v[id].name) || 'Guest', me: id === myId };
+      }).sort(function (a, b) { return (a.joinedAt || 0) - (b.joinedAt || 0); });
+      emit();
+      if (App.state && App.state.activeTab === 'Room' && App.render) App.render();
+    });
 
     // remote -> local
     App.room.ref.on('value', function (snap) {
@@ -194,15 +222,49 @@ window.App = window.App || {};
   // Leave the room (stop syncing). silent=true skips the UI notification (used
   // internally when re-binding).
   function leaveRoom(silent) {
+    // remove our presence entry + stop listening to the member list
+    if (App.room.code) {
+      try { ensureDb().ref('rooms/' + App.room.code + '/members/' + App.deviceId()).remove(); } catch (e) {}
+    }
+    if (App.room.membersRef) { App.room.membersRef.off(); App.room.membersRef = null; }
     if (App.room.ref) { App.room.ref.off(); App.room.ref = null; }
     if (App.room.pushTimer) { clearTimeout(App.room.pushTimer); App.room.pushTimer = null; }
     App.room.code = null;
     App.room.pwHash = null;
     App.room.password = null;
+    App.room.name = null;
+    App.room.members = [];
     App.room.applying = false;
     if (!silent) emit();
   }
   App.leaveRoom = function () { leaveRoom(false); };
+
+  // One-click invite link for the current room: code + password in the URL hash
+  // (the hash is never sent to the server). Empty if not in a room.
+  App.inviteLink = function () {
+    if (!App.room.code) return '';
+    var base = location.origin + location.pathname;
+    var frag = 'room=' + encodeURIComponent(App.room.code);
+    if (App.room.password) frag += '&pw=' + encodeURIComponent(App.room.password);
+    return base + '#' + frag;
+  };
+
+  // Parse an incoming invite (from location.hash). Returns {code, pw} or null.
+  App.parseInvite = function () {
+    var h = (location.hash || '').replace(/^#/, '');
+    if (!h) return null;
+    var params = {};
+    h.split('&').forEach(function (kv) {
+      var i = kv.indexOf('=');
+      if (i > 0) params[kv.slice(0, i)] = decodeURIComponent(kv.slice(i + 1));
+    });
+    if (!params.room) return null;
+    return { code: params.room, pw: params.pw || '' };
+  };
+  // clear the invite from the URL bar so the password isn't left lying around
+  App.clearInvite = function () {
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+  };
 
   // A stable-ish per-browser id (so a room knows who created it). Not security.
   App.deviceId = function () {
