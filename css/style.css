@@ -44,6 +44,13 @@ html, body {
   );
   mix-blend-mode: multiply;
 }
+/* Pokémon sprites sit ABOVE the scanline overlay so the animated GIFs stay
+   crisp (item/ball sprites & badges keep the retro lines). Kept below modals
+   (11000) / picker (12000) so overlays still cover them. */
+.sprite, .pp-sprite, .ec-sprite, .evo-mon img {
+  position: relative;
+  z-index: 10000;
+}
 
 button {
   font-family: inherit;
@@ -330,7 +337,10 @@ input[type="number"] { width: 64px; }
 .slot .pkmn-nick { font-size: 8px; color: var(--accent); text-align:center; }
 .slot .lvl { font-size: 8px; color: var(--muted); }
 .slot.dead .sprite { filter: grayscale(1) brightness(.6); }
-.slot.dead { border-color: #555 !important; opacity: .8; }
+/* no container opacity here — it would trap the sprite below the scanline
+   overlay. The grayscaled sprite + grey border already mark a dead slot. */
+.slot.dead { border-color: #555 !important; }
+.slot.dead .pkmn-name, .slot.dead .pkmn-nick, .slot.dead .lvl { opacity: .7; }
 .slot .grave {
   position: absolute; bottom: 28px; right: 4px; font-size: 16px; z-index: 3;
 }
@@ -406,7 +416,9 @@ input[type="number"] { width: 64px; }
 .bcard .route-tag { position: absolute; top: 2px; left: 4px; font-size: 6px; color: var(--muted); max-width: 80%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .bcard .grave { position: absolute; bottom: 2px; right: 4px; font-size: 13px; z-index: 3; }
 .bcard.dead .sprite { filter: grayscale(1) brightness(.6); }
-.bcard.dead { opacity: .85; }
+/* dim the text, not the whole card (container opacity would trap the sprite
+   under the scanline overlay). */
+.bcard.dead .pkmn-name, .bcard.dead .pkmn-nick { opacity: .7; }
 
 /* ---------- Catch list ---------- */
 .catch-entry {
