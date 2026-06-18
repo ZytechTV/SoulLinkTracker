@@ -184,8 +184,14 @@ button {
 .tabnav {
   display: flex;
   gap: 6px;
-  padding: 10px 14px 0;
+  padding: 10px 14px;
   flex-wrap: wrap;
+  /* keep the tabs visible while scrolling the page */
+  position: sticky;
+  top: 0;
+  z-index: 50; /* above content, below the scanline overlay (9999) */
+  background: var(--bg);
+  border-bottom: 4px solid var(--border);
 }
 .tabbtn {
   background: var(--panel2);
