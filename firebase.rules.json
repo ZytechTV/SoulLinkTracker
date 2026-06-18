@@ -6,7 +6,19 @@
         ".write": "auth != null",
         "pwHash": { ".validate": "newData.isString() && newData.val().length == 64" },
         "owner": { ".validate": "newData.isString()" },
-        "updatedAt": { ".validate": "newData.isNumber()" }
+        "updatedAt": { ".validate": "newData.isNumber()" },
+        "cursors": {
+          "$device": {
+            ".validate": "newData.hasChildren(['rx','ry','at'])",
+            "rx": { ".validate": "newData.isNumber()" },
+            "ry": { ".validate": "newData.isNumber()" },
+            "at": { ".validate": "newData.isNumber()" },
+            "drawing": { ".validate": "newData.isBoolean()" },
+            "anchor": { ".validate": "newData.isString() || newData.val() == null" },
+            "tab": { ".validate": "newData.isString() || newData.val() == null" },
+            "name": { ".validate": "newData.isString()" }
+          }
+        }
       }
     }
   }

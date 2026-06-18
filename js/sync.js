@@ -66,7 +66,13 @@ window.App = window.App || {};
     members: [],       // [{ id, name }] currently present (live)
     applying: false,   // true while applying a remote update (suppresses push)
     pushTimer: null,   // debounce timer for outgoing pushes
-    listeners: []      // ui callbacks on room status changes
+    listeners: [],     // ui callbacks on room status changes
+    // ---- live cursors (presence pointers; not persisted to the savefile) ----
+    cursorsRef: null,  // firebase ref for rooms/<code>/cursors
+    cursors: {},       // { <deviceId>: {anchor, rx, ry, drawing, name, at} } (live)
+    cursorListeners: [], // ui callbacks fired when the cursor set changes
+    cursorTimer: null, // throttle timer for outgoing cursor pushes
+    cursorPending: null // latest cursor payload waiting to be flushed
   };
 
   // Remembered display name (so we don't re-ask every time on a device).
@@ -229,6 +235,24 @@ window.App = window.App || {};
       if (App.state && App.state.activeTab === 'Room' && App.render) App.render();
     });
 
+    // ---- live cursors: other people's pointers in the room --------------
+    // Tiny, high-churn data kept under its own node so it never touches the
+    // savefile/state. Auto-removed on disconnect just like presence.
+    App.room.cursorsRef = d.ref('rooms/' + code + '/cursors');
+    d.ref('.info/connected').on('value', function (snap) {
+      if (snap.val() !== true) return;
+      try { App.room.cursorsRef.child(myId).onDisconnect().remove(); } catch (e) {}
+    });
+    App.room.cursorsRef.on('value', function (snap) {
+      var v = snap.val() || {};
+      // drop our own entry; we render only OTHER people's cursors
+      delete v[myId];
+      App.room.cursors = v;
+      App.room.cursorListeners.forEach(function (fn) {
+        try { fn(v); } catch (e) {}
+      });
+    });
+
     // remote -> local
     App.room.ref.on('value', function (snap) {
       var remote = snap.val();
@@ -256,6 +280,44 @@ window.App = window.App || {};
     }, 400);
   };
 
+  // Register a callback fired whenever the live cursor set changes.
+  App.onCursors = function (fn) { App.room.cursorListeners.push(fn); };
+
+  // Publish this user's pointer to the room (throttled to limit DB writes).
+  // p = { anchor, rx, ry, drawing }. anchor is a stable selector for the element
+  // under the cursor (or null = viewport-relative). rx/ry are 0..1 within it.
+  var CURSOR_THROTTLE_MS = 45;
+  App.pushCursor = function (p) {
+    if (!App.room.code) return;
+    App.room.cursorPending = {
+      anchor: p.anchor || null,
+      rx: Math.max(0, Math.min(1, p.rx)),
+      ry: Math.max(0, Math.min(1, p.ry)),
+      drawing: !!p.drawing,
+      tab: p.tab || null,
+      name: App.room.name || 'Guest',
+      at: Date.now()
+    };
+    if (App.room.cursorTimer) return; // a flush is already scheduled
+    App.room.cursorTimer = setTimeout(function () {
+      App.room.cursorTimer = null;
+      var d = ensureDb();
+      var payload = App.room.cursorPending;
+      App.room.cursorPending = null;
+      if (!d || !App.room.code || !payload) return;
+      d.ref('rooms/' + App.room.code + '/cursors/' + App.deviceId())
+        .set(payload).catch(function () {});
+    }, CURSOR_THROTTLE_MS);
+  };
+
+  // Remove our own cursor from the room (e.g. on mouse leaving the window).
+  App.clearCursor = function () {
+    var d = ensureDb();
+    if (!d || !App.room.code) return;
+    d.ref('rooms/' + App.room.code + '/cursors/' + App.deviceId())
+      .remove().catch(function () {});
+  };
+
   // Leave the room (stop syncing). silent=true skips the UI notification (used
   // internally when re-binding).
   function leaveRoom(silent) {
@@ -265,12 +327,19 @@ window.App = window.App || {};
         var meRef = ensureDb().ref('rooms/' + App.room.code + '/members/' + App.deviceId());
         meRef.onDisconnect().cancel();
         meRef.remove();
+        var myCur = ensureDb().ref('rooms/' + App.room.code + '/cursors/' + App.deviceId());
+        myCur.onDisconnect().cancel();
+        myCur.remove();
       } catch (e) {}
     }
     if (App.room.connRef) { App.room.connRef.off(); App.room.connRef = null; }
     if (App.room.membersRef) { App.room.membersRef.off(); App.room.membersRef = null; }
+    if (App.room.cursorsRef) { App.room.cursorsRef.off(); App.room.cursorsRef = null; }
     if (App.room.ref) { App.room.ref.off(); App.room.ref = null; }
     if (App.room.pushTimer) { clearTimeout(App.room.pushTimer); App.room.pushTimer = null; }
+    if (App.room.cursorTimer) { clearTimeout(App.room.cursorTimer); App.room.cursorTimer = null; }
+    App.room.cursors = {};
+    App.room.cursorPending = null;
     App.room.code = null;
     App.room.pwHash = null;
     App.room.password = null;

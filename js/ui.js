@@ -1287,6 +1287,46 @@ window.App = window.App || {};
     App.render();
   });
 
+  // ---------- live cursors ----------
+  // Broadcast our pointer to the room (element-anchored). Holding the RIGHT
+  // mouse button turns on a fading "laser pointer" trail for everyone.
+  (function () {
+    var drawing = false;
+    var lastSent = 0;
+
+    function send(e) {
+      if (!App.room || !App.room.code || !App.pushCursor) return;
+      var now = Date.now();
+      if (now - lastSent < 30) return; // local rate limit (pushCursor throttles too)
+      lastSent = now;
+      var a = App.buildCursorAnchor(e.target, e.clientX, e.clientY);
+      a.drawing = drawing;
+      a.tab = (App.state && App.state.activeTab) || null; // coarse "where am I"
+      App.pushCursor(a);
+    }
+
+    document.addEventListener('mousemove', send);
+
+    // right button held = drawing mode; suppress the browser context menu so it
+    // doesn't interrupt the gesture
+    document.addEventListener('mousedown', function (e) {
+      if (e.button === 2) { drawing = true; send(e); }
+    });
+    document.addEventListener('mouseup', function (e) {
+      if (e.button === 2) { drawing = false; send(e); }
+    });
+    document.addEventListener('contextmenu', function (e) {
+      // only swallow the menu while actually in a room
+      if (App.room && App.room.code) e.preventDefault();
+    });
+
+    // pull our cursor when the mouse leaves the window
+    document.addEventListener('mouseleave', function () {
+      drawing = false;
+      if (App.clearCursor) App.clearCursor();
+    });
+  })();
+
   // ---------- unload guard ----------
   window.addEventListener('beforeunload', function (e) {
     if (App.dirty) {

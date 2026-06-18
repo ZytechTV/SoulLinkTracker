@@ -379,10 +379,17 @@ window.App = window.App || {};
 		if (!host) return;
 		if (!App.state.started) { host.innerHTML = ""; return; }
 
+		// self-promo pill: [Twitch glitch mark] × [ZytechTV logo]
 		var twitch =
 			'<a class="twitch-pill" href="https://twitch.tv/zytech_tv" target="_blank" ' +
 			'rel="noopener noreferrer" title="Watch ZytechTV live on Twitch">' +
-			'<span class="twitch-glyph">📺</span>/zytech_tv</a>';
+			'<svg class="twitch-glyph" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">' +
+				'<path fill="currentColor" d="M4 1 1.6 5.8V22h5.6v3h3.2l3-3H18l4.6-4.6V1H4zm16.4 14.4L17.6 18h-5l-3 3v-3H4.8V3h15.6v12.4z"/>' +
+				'<path fill="currentColor" d="M16 6.6h-2v6h2v-6zM10.8 6.6h-2v6h2v-6z"/>' +
+			'</svg>' +
+			'<span class="twitch-x">×</span>' +
+			'<img class="twitch-logo" src="data/Logo.png" alt="ZytechTV" />' +
+			'</a>';
 
 		var live = "";
 		if (App.syncAvailable && App.syncAvailable()) {

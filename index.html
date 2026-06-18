@@ -43,6 +43,11 @@
   <!-- Toast container -->
   <div id="toasts" class="toasts"></div>
 
+  <!-- Live cursors: trail canvas (under) + cursor markers (over). Both ignore
+       pointer events so they never block the UI underneath. -->
+  <canvas id="cursorTrail"></canvas>
+  <div id="cursorLayer"></div>
+
   <!-- Log: fixed button + slide-out panel (run log / console) -->
   <button id="logBtn" class="log-btn" title="Open the log (run history + console)" style="display:none">📜<span class="log-btn-badge" id="logBadge" style="display:none"></span></button>
   <div id="logPanel" class="log-panel" style="display:none"></div>
@@ -70,6 +75,7 @@
   <script src="js/pokeapi.js"></script>
   <script src="js/sync.js"></script>
   <script src="js/render.js"></script>
+  <script src="js/cursors.js"></script>
   <script src="js/ui.js"></script>
 </body>
 </html>
