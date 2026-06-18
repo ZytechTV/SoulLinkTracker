@@ -1301,7 +1301,6 @@ window.App = window.App || {};
       lastSent = now;
       var a = App.buildCursorAnchor(e.target, e.clientX, e.clientY);
       a.drawing = drawing;
-      a.tab = (App.state && App.state.activeTab) || null; // coarse "where am I"
       App.pushCursor(a);
     }
 

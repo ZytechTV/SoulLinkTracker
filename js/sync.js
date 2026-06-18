@@ -284,17 +284,15 @@ window.App = window.App || {};
   App.onCursors = function (fn) { App.room.cursorListeners.push(fn); };
 
   // Publish this user's pointer to the room (throttled to limit DB writes).
-  // p = { anchor, rx, ry, drawing }. anchor is a stable selector for the element
-  // under the cursor (or null = viewport-relative). rx/ry are 0..1 within it.
+  // p = { rx, ry, drawing }. rx/ry are 0..1 of the .content frame, so the same
+  // fraction lands on the same place on every member's screen.
   var CURSOR_THROTTLE_MS = 45;
   App.pushCursor = function (p) {
     if (!App.room.code) return;
     App.room.cursorPending = {
-      anchor: p.anchor || null,
       rx: Math.max(0, Math.min(1, p.rx)),
       ry: Math.max(0, Math.min(1, p.ry)),
       drawing: !!p.drawing,
-      tab: p.tab || null,
       name: App.room.name || 'Guest',
       at: Date.now()
     };

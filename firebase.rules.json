@@ -14,8 +14,6 @@
             "ry": { ".validate": "newData.isNumber()" },
             "at": { ".validate": "newData.isNumber()" },
             "drawing": { ".validate": "newData.isBoolean()" },
-            "anchor": { ".validate": "newData.isString() || newData.val() == null" },
-            "tab": { ".validate": "newData.isString() || newData.val() == null" },
             "name": { ".validate": "newData.isString()" }
           }
         }

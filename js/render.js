@@ -424,6 +424,12 @@ window.App = window.App || {};
 		};
 	};
 
+	// Badge sprite URLs that have already failed to load. Once a URL is in here
+	// we render the lettered fallback directly instead of re-emitting a broken
+	// <img> on every re-render (which caused a flicker on each badge click).
+	var badImgUrls = Object.create(null);
+	App.markBadgeImgBroken = function (url) { if (url) badImgUrls[url] = true; };
+
 	// ---------- Status block (badges + counters) — lives in the Dashboard ----------
 	function statusBlockHtml() {
 		var region = App.regionInfo();
@@ -437,19 +443,21 @@ window.App = window.App || {};
 					? window.REGION_DATA.badgeImage(name)
 					: null;
 				var inner;
-				if (img) {
-					// real badge sprite; if it fails to load, fall back to the lettered circle
+				if (img && !badImgUrls[img]) {
+					// real badge sprite; if it fails to load, remember the URL as
+					// broken (so re-renders skip it) and fall back to the letters
 					inner =
 						'<img class="badge-img" src="' +
 						esc(img) +
 						'" alt="' +
 						esc(name) +
 						'" ' +
-						"onerror=\"this.parentNode.classList.add('nobimg');this.remove();\" />" +
+						"onerror=\"this.parentNode.classList.add('nobimg');App.markBadgeImgBroken(this.getAttribute('src'));this.remove();\" />" +
 						'<span class="badge-fallback">' +
 						esc(name.slice(0, 3)) +
 						"</span>";
 				} else {
+					// no sprite, or a previously-broken one -> lettered circle only
 					inner =
 						'<span class="badge-fallback">' + esc(name.slice(0, 3)) + "</span>";
 				}
