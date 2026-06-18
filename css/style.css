@@ -79,11 +79,16 @@ button {
   color: var(--ink); font-size: 8px; padding: 5px 8px; letter-spacing: .5px;
   animation: roomPulse 2s ease-in-out infinite;
 }
-.room-pill.off { border-color: var(--border); animation: none; cursor: default; color: var(--muted); }
+.room-pill.off { border-color: var(--border); animation: none; color: var(--muted); }
 @keyframes roomPulse { 0%,100% { border-color: var(--danger); } 50% { border-color: #7a1f1f; } }
 
-/* push the Room tab to the right edge of the tab bar */
-.tabbtn-room { margin-left: auto; }
+/* right-aligned global actions inside the tab bar (LIVE pill, save, quit) */
+.tab-actions {
+  margin-left: auto;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.tab-actions .ta-btn { padding: 8px 12px; font-size: 11px; }
+.tab-actions .room-pill { font-size: 9px; padding: 7px 10px; }
 
 /* Room tab: share code/password fields */
 .room-share { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 14px; }

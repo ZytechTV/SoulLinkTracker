@@ -103,6 +103,17 @@ window.App = window.App || {};
 
   // ---------- Tab nav ----------
   document.getElementById('tabnav').addEventListener('click', function (e) {
+    // global actions living in the tab bar (right side)
+    if (e.target.closest('#taExportBtn')) { App.exportJSON(); toast('Export started ⬇'); return; }
+    if (e.target.closest('#taResetBtn')) {
+      if (confirm('Quit to the start screen? Unsaved data will be lost — export first!')) {
+        App.resetState(); App.render(); toast('Quit — back to the start screen.');
+      }
+      return;
+    }
+    var pill = e.target.closest('.room-pill[data-tab]');
+    if (pill) { go(pill.getAttribute('data-tab')); return; }
+
     var b = e.target.closest('.tabbtn');
     if (!b || b.disabled) return;
     go(b.getAttribute('data-tab'));

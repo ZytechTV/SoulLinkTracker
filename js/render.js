@@ -326,6 +326,7 @@ window.App = window.App || {};
 		else if (["Dashboard", "Bank", "Info", "Catch", "Caps", "Room"].indexOf(App.state.activeTab) < 0)
 			App.state.activeTab = "Dashboard";
 		renderTabsActive();
+		renderTabActions();
 		var t = App.state.activeTab;
 		if (t === "Setup") renderSetup();
 		else if (t === "Dashboard") renderDashboard();
@@ -368,6 +369,25 @@ window.App = window.App || {};
 		document.querySelectorAll(".tabpanel").forEach(function (p) {
 			p.classList.toggle("active", p.id === "tab-" + App.state.activeTab);
 		});
+	}
+
+	// Right-aligned global actions inside the tab bar: compact LIVE status pill
+	// (click -> Room tab), save (💾) and quit (✕). Only while a game is running.
+	function renderTabActions() {
+		var host = el("tabActions");
+		if (!host) return;
+		if (!App.state.started) { host.innerHTML = ""; return; }
+
+		var live = "";
+		if (App.syncAvailable && App.syncAvailable()) {
+			live = (App.room && App.room.code)
+				? '<span class="room-pill" data-tab="Room" title="Live — click to open the Room tab">🔴 LIVE</span>'
+				: '<span class="room-pill off" data-tab="Room" title="Not in a live room — open the Room tab">⚪ offline</span>';
+		}
+		host.innerHTML =
+			live +
+			'<button class="btn ok small ta-btn" id="taExportBtn" title="Save / download as JSON">💾<span class="ta-lbl">&nbsp;Speicherkarte</span></button>' +
+			'<button class="btn danger small ta-btn" id="taResetBtn" title="Quit to start screen (export first!)">✕</button>';
 	}
 
 	// Current hardcore level cap for the active game, derived from earned badges.
@@ -495,20 +515,6 @@ window.App = window.App || {};
 			'<button class="btn ok" id="joinRoomCardBtn" style="margin-top:12px;width:100%">Join room</button>' +
 			"</div>"
 		);
-	}
-
-	// Live-room status pill in the save bar (controls live in the Room tab).
-	function roomBarHtml() {
-		if (!App.syncAvailable || !App.syncAvailable()) return "";
-		if (App.room && App.room.code) {
-			return (
-				'<span class="room-pill" data-tab="Room" title="Live — open the Room tab to share or leave">' +
-				"🔴 LIVE · " +
-				esc(App.room.code) +
-				"</span>"
-			);
-		}
-		return '<span class="room-pill off" title="Not in a live room">⚪ offline</span>';
 	}
 
 	// ---------- Setup ----------
@@ -1000,12 +1006,6 @@ window.App = window.App || {};
 			" · " +
 			esc(App.regionInfo() ? App.regionInfo().region : "?") +
 			"</span>" +
-			'<div class="spacer"></div>' +
-			'<div class="save-bar">' +
-			roomBarHtml() +
-			'<button class="btn ok small" id="exportBtn" title="Download save as JSON">Export</button>' +
-			'<button class="btn danger small" id="resetBtn" title="Quit to start screen (export first!)">Quit</button>' +
-			"</div>" +
 			"</div>" +
 			statusBlockHtml() +
 			"</div>" +
