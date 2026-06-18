@@ -379,6 +379,11 @@ window.App = window.App || {};
 		if (!host) return;
 		if (!App.state.started) { host.innerHTML = ""; return; }
 
+		var twitch =
+			'<a class="twitch-pill" href="https://twitch.tv/zytech_tv" target="_blank" ' +
+			'rel="noopener noreferrer" title="Watch ZytechTV live on Twitch">' +
+			'<span class="twitch-glyph">📺</span>/zytech_tv</a>';
+
 		var live = "";
 		if (App.syncAvailable && App.syncAvailable()) {
 			live = (App.room && App.room.code)
@@ -386,6 +391,7 @@ window.App = window.App || {};
 				: '<span class="room-pill off" data-tab="Room" title="Not in a live room — click to open the room view">⚪ offline</span>';
 		}
 		host.innerHTML =
+			twitch +
 			live +
 			'<button class="btn ok ta-btn ta-square" id="taExportBtn" title="Save / download as JSON">💾</button>' +
 			'<button class="btn danger ta-btn ta-square" id="taResetBtn" title="Quit to start screen (export first!)">✕</button>';

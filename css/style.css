@@ -88,6 +88,17 @@ button {
   display: inline-flex; align-items: stretch; gap: 6px;
 }
 .tab-actions .room-pill { font-size: 9px; padding: 7px 10px; align-self: center; }
+/* Twitch self-promo pill (links to the channel) */
+.tab-actions .twitch-pill {
+  align-self: center;
+  display: inline-flex; align-items: center; gap: 5px;
+  background: #9146ff; border: 3px solid var(--border);
+  color: #fff; font-size: 9px; padding: 6px 10px;
+  text-decoration: none; letter-spacing: .5px;
+  transition: filter .08s, transform .05s;
+}
+.tab-actions .twitch-pill:hover { filter: brightness(1.15); transform: translateY(-1px); }
+.tab-actions .twitch-glyph { font-size: 11px; line-height: 1; }
 /* square action buttons, matching the tab buttons' height (10px*2 + ~17px text) */
 .tab-actions .ta-square {
   width: 44px; height: 44px; padding: 0;
