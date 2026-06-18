@@ -387,7 +387,7 @@ window.App = window.App || {};
 		var live = "";
 		if (App.syncAvailable && App.syncAvailable()) {
 			live = (App.room && App.room.code)
-				? '<span class="room-pill" data-tab="Room" title="Live — click for room code, password & members">🔴 LIVE</span>'
+				? '<span class="room-pill" data-tab="Room" title="Synced — click for room code, password & members">🔴 Synced</span>'
 				: '<span class="room-pill off" data-tab="Room" title="Not in a live room — click to open the room view">⚪ offline</span>';
 		}
 		host.innerHTML =
